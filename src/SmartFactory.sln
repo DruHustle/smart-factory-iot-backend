@@ -1,0 +1,52 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DeviceService", "Services\DeviceService\DeviceService.csproj", "{DEVICE_SERVICE_GUID}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TelemetryService", "Services\TelemetryService\TelemetryService.csproj", "{TELEMETRY_SERVICE_GUID}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AnalyticsService", "Services\AnalyticsService\AnalyticsService.csproj", "{ANALYTICS_SERVICE_GUID}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityService", "Services\IdentityService\IdentityService.csproj", "{IDENTITY_SERVICE_GUID}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NotificationService", "Services\NotificationService\NotificationService.csproj", "{NOTIFICATION_SERVICE_GUID}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventBus", "BuildingBlocks\EventBus\EventBus.csproj", "{EVENTBUS_GUID}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DEVICE_SERVICE_GUID}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DEVICE_SERVICE_GUID}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DEVICE_SERVICE_GUID}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DEVICE_SERVICE_GUID}.Release|Any CPU.Build.0 = Release|Any CPU
+		{TELEMETRY_SERVICE_GUID}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{TELEMETRY_SERVICE_GUID}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{TELEMETRY_SERVICE_GUID}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{TELEMETRY_SERVICE_GUID}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ANALYTICS_SERVICE_GUID}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ANALYTICS_SERVICE_GUID}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ANALYTICS_SERVICE_GUID}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ANALYTICS_SERVICE_GUID}.Release|Any CPU.Build.0 = Release|Any CPU
+		{IDENTITY_SERVICE_GUID}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{IDENTITY_SERVICE_GUID}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{IDENTITY_SERVICE_GUID}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{IDENTITY_SERVICE_GUID}.Release|Any CPU.Build.0 = Release|Any CPU
+		{NOTIFICATION_SERVICE_GUID}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{NOTIFICATION_SERVICE_GUID}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{NOTIFICATION_SERVICE_GUID}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{NOTIFICATION_SERVICE_GUID}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EVENTBUS_GUID}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EVENTBUS_GUID}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EVENTBUS_GUID}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EVENTBUS_GUID}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,29 @@
+asyncapi: 2.6.0
+info:
+  title: Smart Factory IoT Telemetry API
+  version: 1.0.0
+  description: API for real-time telemetry data from ESP-32 sensors via Azure IoT Hub.
+
+channels:
+  telemetry/events:
+    publish:
+      message:
+        $ref: '#/components/messages/TelemetryData'
+
+components:
+  messages:
+    TelemetryData:
+      payload:
+        type: object
+        properties:
+          deviceId:
+            type: string
+          temperature:
+            type: number
+          humidity:
+            type: number
+          vibration:
+            type: number
+          timestamp:
+            type: string
+            format: date-time

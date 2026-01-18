@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "dgSpecHash": "gUdY80/c8Vo=",
+  "success": true,
+  "projectFilePath": "/Users/andrewgotora/Software Development/GitHub/smart-factory-iot-backend/src/BuildingBlocks/EventBus/EventBus.csproj",
+  "expectedPackageFiles": [
+    "/Users/andrewgotora/.nuget/packages/azure.core/1.36.0/azure.core.1.36.0.nupkg.sha512",
+    "/Users/andrewgotora/.nuget/packages/azure.core.amqp/1.3.0/azure.core.amqp.1.3.0.nupkg.sha512",
+    "/Users/andrewgotora/.nuget/packages/azure.messaging.servicebus/7.17.1/azure.messaging.servicebus.7.17.1.nupkg.sha512",
+    "/Users/andrewgotora/.nuget/packages/microsoft.azure.amqp/2.6.4/microsoft.azure.amqp.2.6.4.nupkg.sha512",
+    "/Users/andrewgotora/.nuget/packages/microsoft.bcl.asyncinterfaces/1.1.1/microsoft.bcl.asyncinterfaces.1.1.1.nupkg.sha512",
+    "/Users/andrewgotora/.nuget/packages/microsoft.extensions.dependencyinjection.abstractions/8.0.0/microsoft.extensions.dependencyinjection.abstractions.8.0.0.nupkg.sha512",
+    "/Users/andrewgotora/.nuget/packages/microsoft.extensions.logging.abstractions/8.0.0/microsoft.extensions.logging.abstractions.8.0.0.nupkg.sha512",
+    "/Users/andrewgotora/.nuget/packages/system.diagnostics.diagnosticsource/6.0.1/system.diagnostics.diagnosticsource.6.0.1.nupkg.sha512",
+    "/Users/andrewgotora/.nuget/packages/system.memory/4.5.4/system.memory.4.5.4.nupkg.sha512",
+    "/Users/andrewgotora/.nuget/packages/system.memory.data/1.0.2/system.memory.data.1.0.2.nupkg.sha512",
+    "/Users/andrewgotora/.nuget/packages/system.numerics.vectors/4.5.0/system.numerics.vectors.4.5.0.nupkg.sha512",
+    "/Users/andrewgotora/.nuget/packages/system.runtime.compilerservices.unsafe/6.0.0/system.runtime.compilerservices.unsafe.6.0.0.nupkg.sha512",
+    "/Users/andrewgotora/.nuget/packages/system.text.encodings.web/4.7.2/system.text.encodings.web.4.7.2.nupkg.sha512",
+    "/Users/andrewgotora/.nuget/packages/system.text.json/4.7.2/system.text.json.4.7.2.nupkg.sha512",
+    "/Users/andrewgotora/.nuget/packages/system.threading.tasks.extensions/4.5.4/system.threading.tasks.extensions.4.5.4.nupkg.sha512",
+    "/Users/andrewgotora/.nuget/packages/microsoft.netcore.app.ref/8.0.23/microsoft.netcore.app.ref.8.0.23.nupkg.sha512",
+    "/Users/andrewgotora/.nuget/packages/microsoft.aspnetcore.app.ref/8.0.23/microsoft.aspnetcore.app.ref.8.0.23.nupkg.sha512"
+  ],
+  "logs": []
+}

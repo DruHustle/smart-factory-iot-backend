@@ -1,0 +1,33 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 8.0.x
+        
+    - name: Restore dependencies
+      run: dotnet restore src/SmartFactory.sln
+      
+    - name: Build
+      run: dotnet build src/SmartFactory.sln --no-restore
+      
+    - name: Test
+      run: dotnet test src/SmartFactory.sln --no-build --verbosity normal
+
+    - name: Docker Build & Push
+      if: github.event_name == 'push'
+      run: |
+        docker build -t smartfactory.azurecr.io/device-service:${{ github.sha }} src/Services/DeviceService
+        # docker login and push commands would go here
