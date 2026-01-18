@@ -7,13 +7,12 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy the project file and restore dependencies
-# Note: The context for this Dockerfile should be the 'src' directory
-COPY ["Services/DeviceService/DeviceService.csproj", "Services/DeviceService/"]
-RUN dotnet restore "Services/DeviceService/DeviceService.csproj"
+# The context is 'src/Services/DeviceService', so the csproj is in the current directory
+COPY ["DeviceService.csproj", "."]
+RUN dotnet restore "DeviceService.csproj"
 
-# Copy the rest of the source code
+# Copy the rest of the source code for this service
 COPY . .
-WORKDIR "/src/Services/DeviceService"
 
 # Build the project
 RUN dotnet build "DeviceService.csproj" -c Release -o /app/build
