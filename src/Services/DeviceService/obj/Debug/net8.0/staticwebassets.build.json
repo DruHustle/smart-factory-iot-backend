@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "PITOyXYTWb/d892Iv0Qm1GrVMek6P4ehXBc5n8iRYz4=",
+  "Source": "DeviceService",
+  "BasePath": "_content/DeviceService",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}

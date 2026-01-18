@@ -53,15 +53,15 @@ namespace SmartFactory.Services.NotificationService.Controllers
 
     public class EmailRequest
     {
-        public string To { get; set; }
-        public string Subject { get; set; }
-        public string Body { get; set; }
+        public string To { get; set; } = string.Empty;
+        public string Subject { get; set; } = string.Empty;
+        public string Body { get; set; } = string.Empty;
     }
 
     public class AlertPayload
     {
-        public string AlertName { get; set; }
-        public string Severity { get; set; }
-        public string Message { get; set; }
+        public string AlertName { get; set; } = string.Empty;
+        public string Severity { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
     }
 }

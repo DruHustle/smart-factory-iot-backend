@@ -1,0 +1,86 @@
+{
+  "format": 1,
+  "restore": {
+    "/home/ubuntu/smart-factory-iot-backend/src/Services/TelemetryService/obj/Debug/net8.0/WorkerExtensions/WorkerExtensions.csproj": {}
+  },
+  "projects": {
+    "/home/ubuntu/smart-factory-iot-backend/src/Services/TelemetryService/obj/Debug/net8.0/WorkerExtensions/WorkerExtensions.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/ubuntu/smart-factory-iot-backend/src/Services/TelemetryService/obj/Debug/net8.0/WorkerExtensions/WorkerExtensions.csproj",
+        "projectName": "Microsoft.Azure.Functions.Worker.Extensions",
+        "projectPath": "/home/ubuntu/smart-factory-iot-backend/src/Services/TelemetryService/obj/Debug/net8.0/WorkerExtensions/WorkerExtensions.csproj",
+        "packagesPath": "/home/ubuntu/.nuget/packages/",
+        "outputPath": "/home/ubuntu/smart-factory-iot-backend/src/Services/TelemetryService/obj/Debug/net8.0/WorkerExtensions/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/ubuntu/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net6.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net6.0": {
+            "targetAlias": "net6.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net6.0": {
+          "targetAlias": "net6.0",
+          "dependencies": {
+            "Microsoft.Azure.WebJobs.Extensions.EventHubs": {
+              "target": "Package",
+              "version": "[6.3.1, )"
+            },
+            "Microsoft.NET.Sdk.Functions": {
+              "target": "Package",
+              "version": "[4.3.0, )"
+            },
+            "Microsoft.NETCore.Targets": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[3.0.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[6.0.36, 6.0.36]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[6.0.36, 6.0.36]"
+            }
+          ],
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/8.0.122/RuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

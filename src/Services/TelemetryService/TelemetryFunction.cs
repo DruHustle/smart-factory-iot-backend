@@ -13,7 +13,7 @@ namespace SmartFactory.Services.TelemetryService
         }
 
         [Function("ProcessTelemetry")]
-        public void Run([EventHubTrigger("messages/events", Connection = "IoTHubConnectionString")] string message, FunctionContext context)
+        public void Run([EventHubTrigger("messages/events", Connection = "IoTHubConnectionString", IsBatched = false)] string message, FunctionContext context)
         {
             _logger.LogInformation($"C# IoT Hub trigger function processed a message: {message}");
             

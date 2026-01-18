@@ -1,0 +1,13 @@
+/home/ubuntu/smart-factory-iot-backend/src/BuildingBlocks/EventBus/bin/Debug/net8.0/EventBus.deps.json
+/home/ubuntu/smart-factory-iot-backend/src/BuildingBlocks/EventBus/bin/Debug/net8.0/EventBus.dll
+/home/ubuntu/smart-factory-iot-backend/src/BuildingBlocks/EventBus/bin/Debug/net8.0/EventBus.pdb
+/home/ubuntu/smart-factory-iot-backend/src/BuildingBlocks/EventBus/obj/Debug/net8.0/EventBus.csproj.AssemblyReference.cache
+/home/ubuntu/smart-factory-iot-backend/src/BuildingBlocks/EventBus/obj/Debug/net8.0/EventBus.GeneratedMSBuildEditorConfig.editorconfig
+/home/ubuntu/smart-factory-iot-backend/src/BuildingBlocks/EventBus/obj/Debug/net8.0/EventBus.AssemblyInfoInputs.cache
+/home/ubuntu/smart-factory-iot-backend/src/BuildingBlocks/EventBus/obj/Debug/net8.0/EventBus.AssemblyInfo.cs
+/home/ubuntu/smart-factory-iot-backend/src/BuildingBlocks/EventBus/obj/Debug/net8.0/EventBus.csproj.CoreCompileInputs.cache
+/home/ubuntu/smart-factory-iot-backend/src/BuildingBlocks/EventBus/obj/Debug/net8.0/EventBus.sourcelink.json
+/home/ubuntu/smart-factory-iot-backend/src/BuildingBlocks/EventBus/obj/Debug/net8.0/EventBus.dll
+/home/ubuntu/smart-factory-iot-backend/src/BuildingBlocks/EventBus/obj/Debug/net8.0/refint/EventBus.dll
+/home/ubuntu/smart-factory-iot-backend/src/BuildingBlocks/EventBus/obj/Debug/net8.0/EventBus.pdb
+/home/ubuntu/smart-factory-iot-backend/src/BuildingBlocks/EventBus/obj/Debug/net8.0/ref/EventBus.dll

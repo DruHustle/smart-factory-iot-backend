@@ -6104,19 +6104,19 @@
     ]
   },
   "packageFolders": {
-    "/Users/andrewgotora/.nuget/packages/": {}
+    "/home/ubuntu/.nuget/packages/": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/andrewgotora/Software Development/GitHub/smart-factory-iot-backend/src/Services/NotificationService/NotificationService.csproj",
+      "projectUniqueName": "/home/ubuntu/smart-factory-iot-backend/src/Services/NotificationService/NotificationService.csproj",
       "projectName": "NotificationService",
-      "projectPath": "/Users/andrewgotora/Software Development/GitHub/smart-factory-iot-backend/src/Services/NotificationService/NotificationService.csproj",
-      "packagesPath": "/Users/andrewgotora/.nuget/packages/",
-      "outputPath": "/Users/andrewgotora/Software Development/GitHub/smart-factory-iot-backend/src/Services/NotificationService/obj/",
+      "projectPath": "/home/ubuntu/smart-factory-iot-backend/src/Services/NotificationService/NotificationService.csproj",
+      "packagesPath": "/home/ubuntu/.nuget/packages/",
+      "outputPath": "/home/ubuntu/smart-factory-iot-backend/src/Services/NotificationService/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/Users/andrewgotora/.nuget/NuGet/NuGet.Config"
+        "/home/ubuntu/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net8.0"
@@ -6134,13 +6134,7 @@
         "warnAsError": [
           "NU1605"
         ]
-      },
-      "restoreAuditProperties": {
-        "enableAudit": "true",
-        "auditLevel": "low",
-        "auditMode": "direct"
-      },
-      "SdkAnalysisLevel": "10.0.100"
+      }
     },
     "frameworks": {
       "net8.0": {
@@ -6174,20 +6168,6 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
-        "downloadDependencies": [
-          {
-            "name": "Microsoft.AspNetCore.App.Ref",
-            "version": "[8.0.23, 8.0.23]"
-          },
-          {
-            "name": "Microsoft.NETCore.App.Host.osx-arm64",
-            "version": "[8.0.23, 8.0.23]"
-          },
-          {
-            "name": "Microsoft.NETCore.App.Ref",
-            "version": "[8.0.23, 8.0.23]"
-          }
-        ],
         "frameworkReferences": {
           "Microsoft.AspNetCore.App": {
             "privateAssets": "none"
@@ -6196,7 +6176,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/10.0.102/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/8.0.122/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

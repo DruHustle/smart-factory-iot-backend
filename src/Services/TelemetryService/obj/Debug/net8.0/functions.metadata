@@ -1,0 +1,23 @@
+[
+  {
+    "name": "ProcessTelemetry",
+    "scriptFile": "TelemetryService.dll",
+    "entryPoint": "SmartFactory.Services.TelemetryService.TelemetryFunction.Run",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "message",
+        "direction": "In",
+        "type": "eventHubTrigger",
+        "dataType": "String",
+        "eventHubName": "messages/events",
+        "connection": "IoTHubConnectionString",
+        "cardinality": "One",
+        "properties": {}
+      }
+    ]
+  }
+]
