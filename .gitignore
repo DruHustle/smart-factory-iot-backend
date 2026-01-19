@@ -87,3 +87,36 @@ appsettings.Local.json
 
 # User secrets
 secrets.json
+
+# Ignore all .obj files
+*.obj
+
+# NuGet
+*.nupkg
+*.snupkg
+*.nuspec
+.nuget/
+packages/
+project.lock.json
+project.fragment.lock.json
+*.csproj.user
+.nuget.props
+.nuget.targets
+
+# Auto-generated files by Visual Studio
+*.ncb
+*.suo
+*.sdf
+*.cache
+*.dbmdl
+*.opendb
+*.pdb
+*.psess
+*.vsp
+*.vsps
+*.vssscc
+*.vssscc
+*.vsix
+*.vsixmanifest
+*.vscode/
+.vscode/
