@@ -21,7 +21,7 @@ resource "azurerm_key_vault" "kv" {
   name                = "kv-smart-factory"
   location            = azurerm_resource_group.iot_rg.location
   resource_group_name = azurerm_resource_group.iot_rg.name
-  tenant_id           = "YOUR_TENANT_ID"
+  tenant_id           = "07826e40-29c9-4732-b84a-ff95043ef94eb" # Replace with your tenant ID
   sku_name            = "standard"
 }
 
