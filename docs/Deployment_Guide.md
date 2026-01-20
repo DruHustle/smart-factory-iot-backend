@@ -8,7 +8,7 @@ The architecture adheres to **Domain-Driven Design (DDD)** and **S.O.L.I.D. Prin
 
 | Component Layer | Key Technologies | Purpose |
 | :--- | :--- | :--- |
-| **Edge Layer** | Raspberry Pi 5, ESP-32 Wrover, MQTT/AMQP | Data acquisition and gateway functionality. |
+| **Edge Layer** | Raspberry Pi 5, ESP32 Rover, MQTT/AMQP | Data acquisition and gateway functionality. |
 | **IoT Layer** | Azure IoT Hub | Central hub for device connectivity, telemetry ingestion, and command & control (C2D). |
 | **Backend Services** | .NET 8 Microservices (Identity, Device, Telemetry, Analytics, Notification) | Business logic, data processing, and API endpoints. |
 | **Data Layer** | Aiven MySQL, Azure Redis Cache | Persistent storage and high-performance caching. |
@@ -35,24 +35,24 @@ The core Azure resources are provisioned using the provided Terraform configurat
 
 Navigate to the Terraform directory and initialize the workspace.
 
-\`\`\`bash
+```bash
 cd smart-factory-backend/deploy/terraform
 terraform init
-\`\`\`
+```
 
 Review the plan to ensure the correct resources will be created. **Note**: You must replace `YOUR_TENANT_ID` in `main.tf` with your Azure Active Directory Tenant ID.
 
-\`\`\`bash
+```bash
 terraform plan -var="tenant_id=<YOUR_TENANT_ID>"
-\`\`\`
+```
 
 ### Step 3.2: Apply Configuration
 
 Apply the configuration to create the resources.
 
-\`\`\`bash
+```bash
 terraform apply -var="tenant_id=<YOUR_TENANT_ID>"
-\`\`\`
+```
 
 This will provision the following **free-tier** Azure services:
 *   **Resource Group**: `rg-smart-factory`
@@ -71,17 +71,17 @@ The microservices are containerized and deployed to a Kubernetes cluster (e.g., 
 The `src/Services/DeviceService/Dockerfile` provides the build steps for the Device Management Service. You will need to create similar Dockerfiles for the **IdentityService** and **NotificationService**.
 
 1.  **Build the Docker Image**:
-    \`\`\`bash
+    ```bash
     docker build -t smartfactory.azurecr.io/identity-service:v1.0.0 ../../src/Services/IdentityService
     docker build -t smartfactory.azurecr.io/notification-service:v1.0.0 ../../src/Services/NotificationService
-    \`\`\`
+    ```
 2.  **Push to Azure Container Registry (ACR)**:
-    \`\`\`bash
+    ```bash
     # Assuming you have an ACR named 'smartfactory'
     az acr login --name smartfactory
     docker push smartfactory.azurecr.io/identity-service:v1.0.0
     docker push smartfactory.azurecr.io/notification-service:v1.0.0
-    \`\`\`
+    ```
 
 ### Step 4.2: Deploy to Kubernetes
 
@@ -108,13 +108,49 @@ The Notification Service includes logic to send emails via the **Microsoft Graph
 *   **Graph API**: Requires the Identity Service to acquire a token with the necessary `Mail.Send` scope.
 *   **Logic App**: The `logic-smart-factory-notifications` workflow must be manually designed in the Azure Portal to handle the alert payload and perform actions like sending a Teams message or an email via the Microsoft Graph connector.
 
-## 6. Edge Device Configuration (No Change)
+## 6. Edge Device Configuration
 
-... (Sections 5.1 and 5.2 remain the same)
+This section details the configuration for the supported edge devices: **Raspberry Pi 5** and **ESP32 Rover**.
 
-## 7. API Documentation (No Change)
+### 6.1 Raspberry Pi 5 (Industrial Gateway)
 
-... (Section 6 remains the same)
+The Raspberry Pi 5 acts as a high-performance gateway, aggregating data from multiple sensors and providing local edge processing.
+
+1.  **OS Setup**: Use Raspberry Pi OS (64-bit) Lite for optimal performance.
+2.  **Azure IoT Edge Runtime**:
+    *   Install the IoT Edge runtime to enable containerized module deployment.
+    *   Register the device in Azure IoT Hub and apply the connection string.
+3.  **Connectivity**:
+    *   Use the onboard Ethernet or Wi-Fi 5 for cloud connectivity.
+    *   Configure local MQTT broker (e.g., Mosquitto) to receive data from ESP32 nodes.
+
+### 6.2 ESP32 Rover (Sensor Node)
+
+The ESP32 Rover is used for direct sensor interfacing (Temperature, Humidity, Vibration) and low-power telemetry transmission.
+
+1.  **Firmware Development**: Use Arduino IDE or PlatformIO with the `Azure SDK for C` or `PubSubClient` for MQTT.
+2.  **Provisioning**:
+    *   Use **X.509 Certificates** or **SAS Keys** for secure authentication with Azure IoT Hub.
+    *   Configure the device to connect to the Raspberry Pi 5 gateway or directly to IoT Hub via Wi-Fi.
+3.  **Power Management**: Utilize deep-sleep modes between telemetry transmissions to optimize battery life in industrial environments.
+
+## 7. API Documentation
+
+The backend services expose RESTful APIs documented using **Swagger/OpenAPI**.
+
+### 7.1 Accessing Swagger UI
+
+Once deployed, you can access the interactive API documentation at the following endpoints:
+*   **Device Service**: `http://<k8s-ingress-ip>/device-service/swagger`
+*   **Identity Service**: `http://<k8s-ingress-ip>/identity-service/swagger`
+*   **Notification Service**: `http://<k8s-ingress-ip>/notification-service/swagger`
+
+### 7.2 AsyncAPI for Telemetry
+
+For real-time telemetry streams and event-driven communication, refer to the `docs/asyncapi.yaml` specification. This defines the message formats for:
+*   **IoT Hub Telemetry Ingestion**
+*   **Service Bus Integration Events**
+*   **SignalR Real-time Updates**
 
 ## 8. Next Steps
 
