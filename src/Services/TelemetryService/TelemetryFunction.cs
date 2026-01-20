@@ -7,6 +7,8 @@ using Microsoft.Extensions.Logging;
 using SmartFactory.Services.TelemetryService.Application.DTOs;
 using SmartFactory.Services.TelemetryService.Domain.Entities;
 using SmartFactory.Services.TelemetryService.Infrastructure.Data;
+using SmartFactory.BuildingBlocks.EventBus.Abstractions;
+using SmartFactory.BuildingBlocks.EventBus.Models;
 
 namespace SmartFactory.Services.TelemetryService
 {
@@ -14,11 +16,13 @@ namespace SmartFactory.Services.TelemetryService
     {
         private readonly ILogger _logger;
         private readonly TelemetryDbContext _dbContext;
+        private readonly IEventBus? _eventBus;
 
-        public TelemetryFunction(ILoggerFactory loggerFactory, TelemetryDbContext dbContext)
+        public TelemetryFunction(ILoggerFactory loggerFactory, TelemetryDbContext dbContext, IEventBus? eventBus = null)
         {
             _logger = loggerFactory.CreateLogger<TelemetryFunction>();
             _dbContext = dbContext;
+            _eventBus = eventBus;
         }
 
         [Function("ProcessTelemetry")]
@@ -48,6 +52,20 @@ namespace SmartFactory.Services.TelemetryService
 
                     _dbContext.TelemetryRecords.Add(record);
                     await _dbContext.SaveChangesAsync();
+
+                    // Publish event to Event Bus for Analytics Service
+                    if (_eventBus != null)
+                    {
+                        var integrationEvent = new TelemetryReceivedIntegrationEvent(
+                            record.DeviceId,
+                            record.Temperature,
+                            record.Humidity,
+                            record.Vibration,
+                            record.Timestamp);
+                        
+                        await _eventBus.PublishAsync(integrationEvent);
+                        _logger.LogInformation($"Published TelemetryReceivedIntegrationEvent for device: {record.DeviceId}");
+                    }
 
                     return new SignalRMessageAction("newTelemetry")
                     {
