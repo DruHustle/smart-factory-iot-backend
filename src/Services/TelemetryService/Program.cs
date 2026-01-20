@@ -2,7 +2,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
-using SmartFactory.Services.TelemetryService;
+using SmartFactory.Services.TelemetryService.Infrastructure.Data;
 
 var host = new HostBuilder()
     .ConfigureFunctionsWorkerDefaults()

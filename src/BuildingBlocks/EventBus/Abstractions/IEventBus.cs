@@ -1,17 +1,13 @@
-namespace SmartFactory.BuildingBlocks.EventBus
+using SmartFactory.BuildingBlocks.EventBus.Models;
+
+namespace SmartFactory.BuildingBlocks.EventBus.Abstractions
 {
     public interface IEventBus
     {
-        void Publish(IntegrationEvent @event);
+        Task PublishAsync(IntegrationEvent @event);
         void Subscribe<T, TH>()
             where T : IntegrationEvent
             where TH : IIntegrationEventHandler<T>;
-    }
-
-    public abstract record IntegrationEvent
-    {
-        public Guid Id { get; } = Guid.NewGuid();
-        public DateTime CreationDate { get; } = DateTime.UtcNow;
     }
 
     public interface IIntegrationEventHandler<in TIntegrationEvent>

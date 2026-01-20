@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Services\TelemetryService\TelemetryService.csproj" />
+    <ProjectReference Include="..\Services\AnalyticsService\AnalyticsService.csproj" />
   </ItemGroup>
 
 </Project>

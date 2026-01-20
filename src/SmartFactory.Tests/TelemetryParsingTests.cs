@@ -1,7 +1,7 @@
 using System;
 using System.Text.Json;
 using Xunit;
-using SmartFactory.Services.TelemetryService;
+using SmartFactory.Services.TelemetryService.Application.DTOs;
 
 namespace SmartFactory.Tests
 {

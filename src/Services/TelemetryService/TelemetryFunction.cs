@@ -1,63 +1,15 @@
+using System.Net;
+using System.Text.Json;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
-using Microsoft.Extensions.Logging;
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using System.Net;
+using Microsoft.Extensions.Logging;
+using SmartFactory.Services.TelemetryService.Application.DTOs;
+using SmartFactory.Services.TelemetryService.Domain.Entities;
+using SmartFactory.Services.TelemetryService.Infrastructure.Data;
 
 namespace SmartFactory.Services.TelemetryService
 {
-    /// <summary>
-    /// Data Transfer Object (DTO) representing the telemetry payload sent by IoT devices.
-    /// </summary>
-    public class TelemetryData
-    {
-        public string DeviceId { get; set; } = string.Empty;
-        public double Temperature { get; set; }
-        public double Humidity { get; set; }
-        public double Vibration { get; set; }
-        public DateTime? Timestamp { get; set; }
-    }
-
-    /// <summary>
-    /// Database entity representing a single telemetry record stored in MySQL.
-    /// </summary>
-    public class TelemetryRecord
-    {
-        public int Id { get; set; }
-        public string DeviceId { get; set; } = string.Empty;
-        public double Temperature { get; set; }
-        public double Humidity { get; set; }
-        public double Vibration { get; set; }
-        public DateTime Timestamp { get; set; }
-    }
-
-    /// <summary>
-    /// Entity Framework Core database context for telemetry data.
-    /// </summary>
-    public class TelemetryDbContext : DbContext
-    {
-        public TelemetryDbContext(DbContextOptions<TelemetryDbContext> options) : base(options) { }
-        public DbSet<TelemetryRecord> TelemetryRecords { get; set; }
-    }
-
-    /// <summary>
-    /// Represents a message to be sent via SignalR.
-    /// </summary>
-    public class SignalRMessageAction
-    {
-        public SignalRMessageAction(string target)
-        {
-            Target = target;
-        }
-
-        public string Target { get; set; }
-        public object[] Arguments { get; set; } = Array.Empty<object>();
-    }
-
-    /// <summary>
-    /// Handles telemetry data processing, historical data retrieval, and real-time broadcasting.
-    /// </summary>
     public class TelemetryFunction
     {
         private readonly ILogger _logger;
@@ -69,10 +21,6 @@ namespace SmartFactory.Services.TelemetryService
             _dbContext = dbContext;
         }
 
-        /// <summary>
-        /// Triggered by Azure IoT Hub (via Event Hubs) when new telemetry data arrives.
-        /// Parses the JSON payload, saves it to the database, and broadcasts it via SignalR.
-        /// </summary>
         [Function("ProcessTelemetry")]
         [SignalROutput(HubName = "telemetryHub", ConnectionStringSetting = "AzureSignalRConnectionString")]
         public async Task<SignalRMessageAction> Run(
@@ -80,7 +28,6 @@ namespace SmartFactory.Services.TelemetryService
             FunctionContext context)
         {
             _logger.LogInformation($"C# IoT Hub trigger function processed a message: {message}");
-
             try
             {
                 var data = JsonSerializer.Deserialize<TelemetryData>(message, new JsonSerializerOptions 
@@ -102,8 +49,6 @@ namespace SmartFactory.Services.TelemetryService
                     _dbContext.TelemetryRecords.Add(record);
                     await _dbContext.SaveChangesAsync();
 
-                    _logger.LogInformation($"Successfully saved telemetry for device {data.DeviceId}.");
-
                     return new SignalRMessageAction("newTelemetry")
                     {
                         Arguments = new[] { record }
@@ -114,21 +59,15 @@ namespace SmartFactory.Services.TelemetryService
             {
                 _logger.LogError($"Error processing telemetry: {ex.Message}");
             }
-
             return null!;
         }
 
-        /// <summary>
-        /// HTTP GET endpoint to retrieve the last 100 telemetry records for a specific device.
-        /// </summary>
         [Function("GetHistoricalTelemetry")]
         public async Task<HttpResponseData> GetHistoricalTelemetry(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "telemetry/{deviceId}")] HttpRequestData req,
             string deviceId,
             FunctionContext executionContext)
         {
-            _logger.LogInformation($"Fetching historical telemetry for device: {deviceId}");
-
             var records = await _dbContext.TelemetryRecords
                 .Where(r => r.DeviceId == deviceId)
                 .OrderByDescending(r => r.Timestamp)
@@ -140,9 +79,6 @@ namespace SmartFactory.Services.TelemetryService
             return response;
         }
 
-        /// <summary>
-        /// Required endpoint for SignalR clients to negotiate a connection.
-        /// </summary>
         [Function("negotiate")]
         public static HttpResponseData Negotiate(
             [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req,
@@ -153,5 +89,15 @@ namespace SmartFactory.Services.TelemetryService
             response.WriteString(connectionInfo);
             return response;
         }
+    }
+
+    public class SignalRMessageAction
+    {
+        public SignalRMessageAction(string target)
+        {
+            Target = target;
+        }
+        public string Target { get; set; }
+        public object[] Arguments { get; set; } = Array.Empty<object>();
     }
 }

@@ -1,7 +1,9 @@
 using Azure.Messaging.ServiceBus;
+using SmartFactory.BuildingBlocks.EventBus.Abstractions;
+using SmartFactory.BuildingBlocks.EventBus.Models;
 using System.Text.Json;
 
-namespace SmartFactory.BuildingBlocks.EventBus
+namespace SmartFactory.BuildingBlocks.EventBus.Implementations
 {
     public class AzureServiceBus : IEventBus
     {
@@ -13,7 +15,7 @@ namespace SmartFactory.BuildingBlocks.EventBus
             _client = new ServiceBusClient(connectionString);
         }
 
-        public async void Publish(IntegrationEvent @event)
+        public async Task PublishAsync(IntegrationEvent @event)
         {
             var sender = _client.CreateSender(_topicName);
             var jsonMessage = JsonSerializer.Serialize(@event, @event.GetType());
@@ -26,8 +28,7 @@ namespace SmartFactory.BuildingBlocks.EventBus
             where T : IntegrationEvent
             where TH : IIntegrationEventHandler<T>
         {
-            // Implementation for Service Bus Processor to handle incoming messages
-            // and dispatch to the appropriate handler (TH)
+            // Implementation for Service Bus Processor would go here
         }
     }
 }

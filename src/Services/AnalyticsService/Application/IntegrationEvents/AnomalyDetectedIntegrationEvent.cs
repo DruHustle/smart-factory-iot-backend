@@ -1,6 +1,6 @@
-using SmartFactory.BuildingBlocks.EventBus;
+using SmartFactory.BuildingBlocks.EventBus.Models;
 
-namespace SmartFactory.Services.AnalyticsService.Events
+namespace SmartFactory.Services.AnalyticsService.Application.IntegrationEvents
 {
     public record AnomalyDetectedIntegrationEvent : IntegrationEvent
     {
