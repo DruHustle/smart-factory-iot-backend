@@ -1,10 +1,10 @@
-# Smart Factory IoT Backend Reorganization Plan
+# Smart Factory IoT Backend Organization Plan
 
-This document outlines the architectural changes made to the Smart Factory IoT Backend to align with microservices standards and SOLID principles.
+The Smart Factory IoT Backend aligns with microservices standards and SOLID principles.
 
 ## 1. Architectural Overview
 
-The project has been reorganized from a flat structure into a multi-layered microservices architecture. Each service now follows a consistent folder structure:
+The project is organised into a multi-layered microservices architecture. Each service now follows a consistent folder structure:
 
 - **API**: Controllers and Program.cs (entry point).
 - **Application**: DTOs, Interfaces, and Application Services.
