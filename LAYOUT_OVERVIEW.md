@@ -1,4 +1,4 @@
-# Smart Factory IoT Backend Organization Plan
+# Smart Factory IoT Backend Overview
 
 The Smart Factory IoT Backend aligns with microservices standards and SOLID principles.
 
