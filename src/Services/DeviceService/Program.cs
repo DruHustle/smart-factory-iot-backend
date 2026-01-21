@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using SmartFactory.Services.DeviceService.Domain.Interfaces;
 using SmartFactory.Services.DeviceService.Infrastructure.Data;
 using SmartFactory.Services.DeviceService.Infrastructure.Repositories;
+using SmartFactory.Services.DeviceService.Infrastructure.BackgroundServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,9 @@ builder.Services.AddDbContext<DeviceDbContext>(options =>
 
 // Register Repository
 builder.Services.AddScoped<IDeviceRepository, DeviceRepository>();
+
+// Register Background Service for OTA Updates
+builder.Services.AddHostedService<UpdateManagerService>();
 
 var app = builder.Build();
 
