@@ -31,5 +31,13 @@ namespace SmartFactory.Services.IdentityService.API.Controllers
             var profile = _identityService.GetUserProfile(User);
             return Ok(profile);
         }
+
+        [HttpGet("check-role/{role}")]
+        [Authorize]
+        public IActionResult CheckRole(string role)
+        {
+            var hasRole = _identityService.IsInRole(User, role);
+            return Ok(new { Role = role, HasRole = hasRole });
+        }
     }
 }
