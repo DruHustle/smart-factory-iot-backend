@@ -25,6 +25,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Services\TelemetryService\TelemetryService.csproj" />
     <ProjectReference Include="..\Services\AnalyticsService\AnalyticsService.csproj" />
+    <ProjectReference Include="..\Services\DeviceService\DeviceService.csproj" />
+    <ProjectReference Include="..\Services\IdentityService\IdentityService.csproj" />
+    <ProjectReference Include="..\Services\NotificationService\NotificationService.csproj" />
+    <ProjectReference Include="..\BuildingBlocks\EventBus\EventBus.csproj" />
   </ItemGroup>
 
 </Project>
