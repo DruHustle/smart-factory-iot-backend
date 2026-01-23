@@ -13,6 +13,27 @@ A robust, scalable .NET-based microservices backend designed for real-time indus
 *   **Real-time Dashboards**: Integrated with **Azure SignalR Service** to push live telemetry updates to the frontend.
 *   **Enterprise Security**: Secured with **Microsoft Entra ID (Azure AD)**, RBAC, and **Azure Key Vault** for secrets management.
 
+## 🏗️ Architectural Overview
+
+The project is organized into a multi-layered microservices architecture. Each service follows a consistent folder structure to ensure separation of concerns and maintainability:
+
+-   **API**: Controllers and entry points.
+-   **Application**: DTOs, Interfaces, and Application Services.
+-   **Domain**: Entities and Domain Models.
+-   **Infrastructure**: Data Contexts (EF Core) and Repository implementations.
+
+### Core Services
+
+-   **DeviceService**: Manages industrial device metadata, status, and lifecycle.
+-   **IdentityService**: Encapsulates Microsoft Identity Web logic for secure authentication.
+-   **AnalyticsService**: Processes sensor data to calculate OEE and detect anomalies.
+-   **TelemetryService**: Ingests IoT Hub messages, persists data, and broadcasts updates via SignalR.
+-   **NotificationService**: Triggers alerts and sends email notifications via Microsoft Graph and Logic Apps.
+
+### Building Blocks
+
+-   **EventBus**: Provides an abstraction for asynchronous communication between services using Azure Service Bus.
+
 ## 🛠️ Technology Stack
 
 | Category | Technologies |
