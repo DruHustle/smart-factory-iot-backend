@@ -12,23 +12,22 @@ namespace SmartFactory.Tests
     public class IdentityServiceTests
     {
         [Fact]
-        public async Task AuthenticateAsync_ShouldReturnToken_WhenCredentialsAreValid()
+        public async Task GetTokenForUserAsync_ShouldReturnToken_WhenScopesAreProvided()
         {
             // Arrange
             var mockIdentityService = new Mock<IIdentityService>();
-            var username = "admin";
-            var password = "password123";
+            var scopes = new[] { "api://smart-factory/access" };
             var expectedToken = "mock-jwt-token";
 
-            mockIdentityService.Setup(s => s.AuthenticateAsync(username, password))
+            mockIdentityService.Setup(s => s.GetTokenForUserAsync(scopes))
                 .ReturnsAsync(expectedToken);
 
             // Act
-            var result = await mockIdentityService.Object.AuthenticateAsync(username, password);
+            var result = await mockIdentityService.Object.GetTokenForUserAsync(scopes);
 
             // Assert
             Assert.Equal(expectedToken, result);
-            mockIdentityService.Verify(x => x.AuthenticateAsync(username, password), Times.Once);
+            mockIdentityService.Verify(x => x.GetTokenForUserAsync(scopes), Times.Once);
         }
     }
 }

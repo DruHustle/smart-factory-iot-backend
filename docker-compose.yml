@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=SmartFactory
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  device-service:
+    build:
+      context: .
+      dockerfile: src/Services/DeviceService/Dockerfile
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=mysql;Database=SmartFactory;Uid=root;Pwd=rootpassword;
+    depends_on:
+      - mysql
+    ports:
+      - "5001:80"
+
+  identity-service:
+    build:
+      context: .
+      dockerfile: src/Services/IdentityService/Dockerfile
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=mysql;Database=SmartFactory;Uid=root;Pwd=rootpassword;
+    depends_on:
+      - mysql
+    ports:
+      - "5002:80"
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: src/Services/NotificationService/Dockerfile
+    depends_on:
+      - mysql
+    ports:
+      - "5003:80"
+
+  analytics-service:
+    build:
+      context: .
+      dockerfile: src/Services/AnalyticsService/Dockerfile
+    depends_on:
+      - mysql
+    ports:
+      - "5004:80"
+
+  telemetry-service:
+    build:
+      context: .
+      dockerfile: src/Services/TelemetryService/Dockerfile
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=mysql;Database=SmartFactory;Uid=root;Pwd=rootpassword;
+    depends_on:
+      - mysql
+    ports:
+      - "5005:80"
+
+volumes:
+  mysql_data:

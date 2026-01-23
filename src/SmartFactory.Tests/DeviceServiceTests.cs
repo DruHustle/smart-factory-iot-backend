@@ -18,7 +18,7 @@ namespace SmartFactory.Tests
         {
             // Arrange
             var mockRepo = new Mock<IDeviceRepository>();
-            var deviceId = "DEV-001";
+            var deviceId = 1;
             var expectedDevice = new Device { Id = deviceId, Name = "Sensor 1", Status = "Active" };
             
             mockRepo.Setup(repo => repo.GetByIdAsync(deviceId))

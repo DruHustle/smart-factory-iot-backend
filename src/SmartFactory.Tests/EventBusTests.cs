@@ -27,8 +27,6 @@ namespace SmartFactory.Tests
             mockEventBus.Verify(x => x.PublishAsync(It.IsAny<IntegrationEvent>()), Times.Once);
         }
 
-        private class TestIntegrationEvent : IntegrationEvent
-        {
-        }
+        private record TestIntegrationEvent : IntegrationEvent;
     }
 }

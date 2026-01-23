@@ -27,7 +27,41 @@ Before starting the deployment, ensure you have the following tools and accounts
 5.  **Kubernetes CLI (kubectl)**: Installed for managing the AKS cluster.
 6.  **.NET SDK**: Version 8.0 installed.
 
-## 3. Cloud Infrastructure Setup (Terraform)
+## 3. Local Development Setup (Docker Compose)
+
+For local development and testing, you can use the provided \`docker-compose.yml\` file to spin up all microservices and a local MySQL database instance.
+
+### Step 3.1: Start Services
+
+Ensure Docker is running on your machine. The \`docker-compose.yml\` file will build the service images using the respective \`Dockerfile\` in each service directory and start a MySQL container.
+
+\`\`\`bash
+cd smart-factory-iot-backend
+docker-compose up --build
+\`\`\`
+
+The services will be available on the following ports:
+*   **Device Service**: \`http://localhost:5001\`
+*   **Identity Service**: \`http://localhost:5002\`
+*   **Notification Service**: \`http://localhost:5003\`
+*   **Analytics Service**: \`http://localhost:5004\`
+*   **Telemetry Service**: \`http://localhost:5005\`
+
+The MySQL database is accessible on \`localhost:3306\` with the following credentials:
+*   **Database Name**: \`SmartFactory\`
+*   **User**: \`root\`
+*   **Password**: \`rootpassword\`
+
+### Step 3.2: Database Migrations
+
+You will need to run database migrations for the services that use persistent storage (DeviceService, IdentityService, TelemetryService). This is typically done by running the application locally outside of Docker or by executing a migration command inside the container.
+
+\`\`\`bash
+# Example for DeviceService (assuming .NET CLI is installed locally)
+dotnet ef database update --project src/Services/DeviceService/DeviceService.csproj
+\`\`\`
+
+## 4. Cloud Infrastructure Setup (Terraform)
 
 The core Azure resources are provisioned using the provided Terraform configuration (`deploy/terraform/main.tf`).
 
@@ -62,36 +96,14 @@ This will provision the following **free-tier** Azure services:
 *   **Azure Logic App Workflow**: `logic-smart-factory-notifications` (Requires manual design for email/Teams integration)
 *   **Azure Service Bus**: `sb-smart-factory` (Basic Tier for Event Bus)
 
-## 4. Backend Deployment (CI/CD)
+## 5. Backend Deployment (CI/CD)
 
 The microservices are containerized and deployed to a Kubernetes cluster (e.g., Azure Kubernetes Service - AKS).
 
-### Step 4.1: Build and Containerize
+### Step 5.1: Build and ContainerizeDockerfiles have been created for all microservices (DeviceService, IdentityService, NotificationService, AnalyticsService, and TelemetryService) and are located in their respective service directories. These Dockerfiles are multi-stage builds optimized for productioThe manual build and push steps are now automated via the GitHub Actions workflow. You only need to ensure your Azure Container Registry (ACR) credentials are set up as GitHub Secrets (\`ACR_USERNAME\` and \`ACR_PASSWORD### Step 5.2: Deploy to KuberneteKubernetes deployment and service manifests have been created for all microservices (DeviceService, IdentityService, NotificationService, AnalyticsService, and TelemetryService) and are located in the \`deploy/k8s\` directory. A manifest for a local MySQL instance (\`mysql.yaml\`) is also included for development cluster deployments.
+### Step 5.3: CI/CD PipelineThe GitHub Actions workflow (\`.github/workflows/main.yml\`) has been updated to automatically build, test, and containerize all five microservices upon every push to the \`main\` branch. It uses a matrix strategy to efficiently build and push all service images to your configured Azure Container Registry (ACR).
 
-The `src/Services/DeviceService/Dockerfile` provides the build steps for the Device Management Service. You will need to create similar Dockerfiles for the **IdentityService** and **NotificationService**.
-
-1.  **Build the Docker Image**:
-    ```bash
-    docker build -t smartfactory.azurecr.io/identity-service:v1.0.0 ../../src/Services/IdentityService
-    docker build -t smartfactory.azurecr.io/notification-service:v1.0.0 ../../src/Services/NotificationService
-    ```
-2.  **Push to Azure Container Registry (ACR)**:
-    ```bash
-    # Assuming you have an ACR named 'smartfactory'
-    az acr login --name smartfactory
-    docker push smartfactory.azurecr.io/identity-service:v1.0.0
-    docker push smartfactory.azurecr.io/notification-service:v1.0.0
-    ```
-
-### Step 4.2: Deploy to Kubernetes
-
-You will need to create Kubernetes deployment manifests for the new services, similar to `deploy/k8s/device-service.yaml`.
-
-### Step 4.3: CI/CD Pipeline Template
-
-The provided GitHub Actions workflow (`.github/workflows/main.yml`) is a template for your CI/CD process. You will need to extend the build and push steps to include the new services.
-
-## 5. Service-Specific Configuration
+## 6. Service-Specific Configuration
 
 ### 5.1 Identity Service (Microsoft Entra ID)
 
@@ -108,7 +120,7 @@ The Notification Service includes logic to send emails via the **Microsoft Graph
 *   **Graph API**: Requires the Identity Service to acquire a token with the necessary `Mail.Send` scope.
 *   **Logic App**: The `logic-smart-factory-notifications` workflow must be manually designed in the Azure Portal to handle the alert payload and perform actions like sending a Teams message or an email via the Microsoft Graph connector.
 
-## 6. Edge Device Configuration
+## 7. Edge Device Configuration
 
 This section details the configuration for the supported edge devices: **Raspberry Pi 5** and **ESP32 Rover**.
 
@@ -134,7 +146,7 @@ The ESP32 Rover is used for direct sensor interfacing (Temperature, Humidity, Vi
     *   Configure the device to connect to the Raspberry Pi 5 gateway or directly to IoT Hub via Wi-Fi.
 3.  **Power Management**: Utilize deep-sleep modes between telemetry transmissions to optimize battery life in industrial environments.
 
-## 7. API Documentation
+## 8. API Documentation
 
 The backend services expose RESTful APIs documented using **Swagger/OpenAPI**.
 
@@ -152,8 +164,30 @@ For real-time telemetry streams and event-driven communication, refer to the `do
 *   **Service Bus Integration Events**
 *   **SignalR Real-time Updates**
 
-## 8. Next Steps
+## 9. Next Steps and Frontend Integration
 
 1.  **Database**: Provision and configure your Aiven MySQL instance and update the connection string in the Kubernetes secrets (`db-secrets`).
 2.  **Authentication**: Complete the Microsoft Entra ID application registration and ensure all services are configured to use the Identity Service for JWT validation.
-3.  **Frontend Integration**: Connect your existing React frontend to the deployed API Gateway (Azure APIM) and the SignalR Hub Service.
+3.  **Frontend Integration**: The frontend application (e.g., a React SPA) needs to be configured to interact with the deployed backend services.
+
+    *   **Authentication**: Configure the frontend to use the **Identity Service** for user login. This typically involves redirecting the user to the Identity Service's login endpoint and handling the returned JWT token.
+    *   **API Communication**: All RESTful API calls should be directed to the API Gateway (e.g., Azure APIM or a Kubernetes Ingress) which routes traffic to the respective microservices.
+    *   **Real-time Telemetry**: Connect the frontend to the **Azure SignalR Service** endpoint. The **Telemetry Service** and **Analytics Service** publish real-time updates (e.g., new telemetry, anomaly alerts) via the Event Bus, which are then broadcasted through SignalR. The frontend should subscribe to the relevant SignalR hubs to display live data.
+
+    \`\`\`javascript
+    // Example: Connecting to the SignalR Hub in a React component
+    import * as signalR from "@microsoft/signalr";
+
+    const connection = new signalR.HubConnectionBuilder()
+        .withUrl("https://<signalr-service-url>/telemetryhub")
+        .withAutomaticReconnect()
+        .build();
+
+    connection.start().then(() => {
+        console.log("Connected to SignalR Telemetry Hub.");
+        connection.on("ReceiveTelemetryUpdate", (data) => {
+            // Update UI with new telemetry data
+            console.log("New telemetry:", data);
+        });
+    }).catch(err => console.error(err.toString()));
+    \`\`\`
