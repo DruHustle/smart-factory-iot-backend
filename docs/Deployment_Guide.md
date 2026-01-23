@@ -57,7 +57,7 @@ The MySQL database is accessible on \`localhost:3306\` with the following creden
 You will need to run database migrations for the services that use persistent storage (DeviceService, IdentityService, TelemetryService). This is typically done by running the application locally outside of Docker or by executing a migration command inside the container.
 
 \`\`\`bash
-# Example for DeviceService (assuming .NET CLI is installed locally)
+Example for DeviceService (assuming .NET CLI is installed locally)
 dotnet ef database update --project src/Services/DeviceService/DeviceService.csproj
 \`\`\`
 
@@ -65,7 +65,7 @@ dotnet ef database update --project src/Services/DeviceService/DeviceService.csp
 
 The core Azure resources are provisioned using the provided Terraform configuration (`deploy/terraform/main.tf`).
 
-### Step 3.1: Initialize and Plan
+### Step 4.1: Initialize and Plan
 
 Navigate to the Terraform directory and initialize the workspace.
 
@@ -80,7 +80,7 @@ Review the plan to ensure the correct resources will be created. **Note**: You m
 terraform plan -var="tenant_id=<YOUR_TENANT_ID>"
 ```
 
-### Step 3.2: Apply Configuration
+### Step 4.2: Apply Configuration
 
 Apply the configuration to create the resources.
 
@@ -100,12 +100,18 @@ This will provision the following **free-tier** Azure services:
 
 The microservices are containerized and deployed to a Kubernetes cluster (e.g., Azure Kubernetes Service - AKS).
 
-### Step 5.1: Build and ContainerizeDockerfiles have been created for all microservices (DeviceService, IdentityService, NotificationService, AnalyticsService, and TelemetryService) and are located in their respective service directories. These Dockerfiles are multi-stage builds optimized for productioThe manual build and push steps are now automated via the GitHub Actions workflow. You only need to ensure your Azure Container Registry (ACR) credentials are set up as GitHub Secrets (\`ACR_USERNAME\` and \`ACR_PASSWORD### Step 5.2: Deploy to KuberneteKubernetes deployment and service manifests have been created for all microservices (DeviceService, IdentityService, NotificationService, AnalyticsService, and TelemetryService) and are located in the \`deploy/k8s\` directory. A manifest for a local MySQL instance (\`mysql.yaml\`) is also included for development cluster deployments.
-### Step 5.3: CI/CD PipelineThe GitHub Actions workflow (\`.github/workflows/main.yml\`) has been updated to automatically build, test, and containerize all five microservices upon every push to the \`main\` branch. It uses a matrix strategy to efficiently build and push all service images to your configured Azure Container Registry (ACR).
+### Step 5.1: ###
+Build and ContainerizeDockerfiles have been created for all microservices (DeviceService, IdentityService, NotificationService, AnalyticsService, and TelemetryService) and are located in their respective service directories. These Dockerfiles are multi-stage builds optimized for productioThe manual build and push steps are now automated via the GitHub Actions workflow. You only need to ensure your Azure Container Registry (ACR) credentials are set up as GitHub Secrets (\`ACR_USERNAME\` and \`ACR_PASSWORD
+
+### Step 5.2: ###
+Deploy to KuberneteKubernetes deployment and service manifests have been created for all microservices (DeviceService, IdentityService, NotificationService, AnalyticsService, and TelemetryService) and are located in the \`deploy/k8s\` directory. A manifest for a local MySQL instance (\`mysql.yaml\`) is also included for development cluster deployments.
+
+### Step 5.3: ###
+CI/CD PipelineThe GitHub Actions workflow (\`.github/workflows/main.yml\`) has been updated to automatically build, test, and containerize all five microservices upon every push to the \`main\` branch. It uses a matrix strategy to efficiently build and push all service images to your configured Azure Container Registry (ACR).
 
 ## 6. Service-Specific Configuration
 
-### 5.1 Identity Service (Microsoft Entra ID)
+### 6.1 Identity Service (Microsoft Entra ID)
 
 The Identity Service uses `Microsoft.Identity.Web` for authentication. You must configure an Application Registration in your Microsoft Entra ID tenant and store the following in **Azure Key Vault**:
 *   `AzureAd:Instance`
@@ -114,7 +120,7 @@ The Identity Service uses `Microsoft.Identity.Web` for authentication. You must 
 *   `AzureAd:ClientId`
 *   `AzureAd:ClientSecret`
 
-### 5.2 Notification Service (Microsoft Graph API & Logic Apps)
+### 6.2 Notification Service (Microsoft Graph API & Logic Apps)
 
 The Notification Service includes logic to send emails via the **Microsoft Graph API** and trigger an **Azure Logic App**.
 *   **Graph API**: Requires the Identity Service to acquire a token with the necessary `Mail.Send` scope.
