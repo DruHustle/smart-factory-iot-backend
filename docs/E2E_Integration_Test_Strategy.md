@@ -136,4 +136,4 @@ public async Task SingleDataPoint_ShouldTriggerFullPipeline_ToNotification()
 By following this strategy, you can create a single, powerful integration test that verifies the complex, multi-service data flow. This test isolates the core business logic of the services from the complexities of the cloud infrastructure (IoT Hub, Service Bus, SignalR, Logic Apps), providing fast, reliable, and repeatable verification of the entire pipeline.
 
 ***
-*Document Author: Manus AI*
+*Document Author: Andrew Gotora*
