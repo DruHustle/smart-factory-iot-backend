@@ -1,0 +1,147 @@
+# ========================================
+# Smart Factory IoT Backend - TelemetryService
+# ========================================
+# Ingests IoT Hub messages and persists data
+# Follows SOLID principles and Kubernetes best practices
+# ========================================
+
+---
+# TelemetryService Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telemetry-service
+  namespace: smart-factory
+  labels:
+    app: telemetry-service
+    tier: backend
+    version: v1
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: telemetry-service
+  template:
+    metadata:
+      labels:
+        app: telemetry-service
+        tier: backend
+        version: v1
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: telemetry-service
+        image: smartfactory.azurecr.io/telemetryservice:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        - name: https
+          containerPort: 443
+          protocol: TCP
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: ASPNETCORE_ENVIRONMENT
+        - name: ConnectionStrings__DefaultConnection
+          valueFrom:
+            secretKeyRef:
+              name: db-secrets
+              key: connection-string
+        - name: IoTHub__ConnectionString
+          valueFrom:
+            secretKeyRef:
+              name: iot-secrets
+              key: iothub-connection-string
+        - name: SignalR__ConnectionString
+          valueFrom:
+            secretKeyRef:
+              name: signalr-secrets
+              key: signalr-connection-string
+        - name: Logging__LogLevel__Default
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: Logging__LogLevel__Default
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 3
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 0
+          periodSeconds: 5
+          failureThreshold: 30
+      restartPolicy: Always
+
+---
+# TelemetryService Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: telemetry-service
+  namespace: smart-factory
+  labels:
+    app: telemetry-service
+    tier: backend
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP
+  selector:
+    app: telemetry-service
+
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: telemetry-service-hpa
+  namespace: smart-factory
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: telemetry-service
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
