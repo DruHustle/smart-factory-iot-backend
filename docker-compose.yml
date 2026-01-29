@@ -1,8 +1,24 @@
+# ========================================
+# Smart Factory IoT Backend - Local Development
+# ========================================
+# This file orchestrates the microservices for local development.
+# Features:
+# - Local MySQL with persistence
+# - Service health checks
+# - Environment variable configuration
+# - Network isolation
+# ========================================
+
 version: '3.8'
 
 services:
+  # ----------------------------------------
+  # Database Service
+  # ----------------------------------------
   mysql:
     image: mysql:8.0
+    container_name: sf-mysql
+    restart: always
     environment:
       - MYSQL_ROOT_PASSWORD=rootpassword
       - MYSQL_DATABASE=SmartFactory
@@ -10,57 +26,113 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./deploy/local-dev/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 10
+    networks:
+      - sf-network
 
+  # ----------------------------------------
+  # Device Service
+  # ----------------------------------------
   device-service:
     build:
       context: .
       dockerfile: src/Services/DeviceService/Dockerfile
+    container_name: sf-device-service
     environment:
+      - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Server=mysql;Database=SmartFactory;Uid=root;Pwd=rootpassword;
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     ports:
       - "5001:80"
+    networks:
+      - sf-network
 
+  # ----------------------------------------
+  # Identity Service
+  # ----------------------------------------
   identity-service:
     build:
       context: .
       dockerfile: src/Services/IdentityService/Dockerfile
+    container_name: sf-identity-service
     environment:
+      - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Server=mysql;Database=SmartFactory;Uid=root;Pwd=rootpassword;
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     ports:
       - "5002:80"
+    networks:
+      - sf-network
 
+  # ----------------------------------------
+  # Notification Service
+  # ----------------------------------------
   notification-service:
     build:
       context: .
       dockerfile: src/Services/NotificationService/Dockerfile
+    container_name: sf-notification-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     ports:
       - "5003:80"
+    networks:
+      - sf-network
 
+  # ----------------------------------------
+  # Analytics Service
+  # ----------------------------------------
   analytics-service:
     build:
       context: .
       dockerfile: src/Services/AnalyticsService/Dockerfile
+    container_name: sf-analytics-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     ports:
       - "5004:80"
+    networks:
+      - sf-network
 
+  # ----------------------------------------
+  # Telemetry Service
+  # ----------------------------------------
   telemetry-service:
     build:
       context: .
       dockerfile: src/Services/TelemetryService/Dockerfile
+    container_name: sf-telemetry-service
     environment:
+      - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Server=mysql;Database=SmartFactory;Uid=root;Pwd=rootpassword;
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     ports:
       - "5005:80"
+    networks:
+      - sf-network
 
+# ----------------------------------------
+# Infrastructure Definitions
+# ----------------------------------------
 volumes:
   mysql_data:
+
+networks:
+  sf-network:
+    driver: bridge
