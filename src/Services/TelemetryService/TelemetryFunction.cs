@@ -26,12 +26,31 @@ namespace SmartFactory.Services.TelemetryService
         }
 
         [Function("ProcessTelemetry")]
-        [SignalROutput(HubName = "telemetryHub", ConnectionStringSetting = "AzureSignalRConnectionString")]
         public async Task<SignalRMessageAction> Run(
             [EventHubTrigger("messages/events", Connection = "IoTHubConnectionString", IsBatched = false)] string message,
             FunctionContext context)
         {
-            _logger.LogInformation($"C# IoT Hub trigger function processed a message: {message}");
+            return await ProcessInternal(message);
+        }
+
+        [Function("IngestTelemetryHttp")]
+        public async Task<HttpResponseData> IngestTelemetryHttp(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "telemetry")] HttpRequestData req,
+            FunctionContext executionContext)
+        {
+            _logger.LogInformation("HTTP trigger processed a telemetry ingestion request.");
+            
+            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            var signalRAction = await ProcessInternal(requestBody);
+
+            var response = req.CreateResponse(HttpStatusCode.Accepted);
+            await response.WriteAsJsonAsync(new { status = "Telemetry received and processing", signalR = signalRAction != null });
+            return response;
+        }
+
+        private async Task<SignalRMessageAction> ProcessInternal(string message)
+        {
+            _logger.LogInformation($"Processing telemetry message: {message}");
             try
             {
                 var data = JsonSerializer.Deserialize<TelemetryData>(message, new JsonSerializerOptions 
