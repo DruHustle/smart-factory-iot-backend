@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: device-service
+  name: notification-service
   namespace: smart-factory
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: device-service
+      app: notification-service
   template:
     metadata:
       labels:
-        app: device-service
+        app: notification-service
     spec:
       containers:
-      - name: device-service
-        image: smartfactory.azurecr.io/device-service:latest
+      - name: notification-service
+        image: smartfactory.azurecr.io/notification-service:latest
         ports:
         - containerPort: 80
         env:
@@ -28,7 +28,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: device-service
+  name: notification-service
   namespace: smart-factory
 spec:
   type: ClusterIP
@@ -36,4 +36,4 @@ spec:
   - port: 80
     targetPort: 80
   selector:
-    app: device-service
+    app: notification-service

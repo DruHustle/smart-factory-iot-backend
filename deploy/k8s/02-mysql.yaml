@@ -1,0 +1,143 @@
+# ========================================
+# Smart Factory IoT Backend - MySQL Database
+# ========================================
+# This manifest deploys MySQL 8.0 with:
+# - Persistent storage for data durability
+# - Resource limits for stability
+# - Health checks for reliability
+# - Security best practices
+# ========================================
+
+---
+# PersistentVolumeClaim for MySQL data persistence
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: smart-factory
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  # Uncomment and specify storageClassName for cloud providers
+  # storageClassName: managed-premium  # Azure
+  # storageClassName: gp2              # AWS
+
+---
+# MySQL Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  namespace: smart-factory
+  labels:
+    app: mysql
+    tier: database
+spec:
+  # Single replica for MySQL (stateful workload)
+  replicas: 1
+  strategy:
+    type: Recreate  # Ensures only one instance runs at a time
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+        tier: database
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        imagePullPolicy: IfNotPresent
+        
+        # Environment variables from secrets
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-secrets
+              key: mysql-root-password
+        - name: MYSQL_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: Database__Name
+        
+        # Container ports
+        ports:
+        - name: mysql
+          containerPort: 3306
+          protocol: TCP
+        
+        # Volume mounts for persistent storage
+        volumeMounts:
+        - name: mysql-storage
+          mountPath: /var/lib/mysql
+        
+        # Resource limits (adjust based on workload)
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        
+        # Liveness probe - checks if MySQL is running
+        livenessProbe:
+          exec:
+            command:
+            - mysqladmin
+            - ping
+            - -h
+            - localhost
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        # Readiness probe - checks if MySQL is ready to accept connections
+        readinessProbe:
+          exec:
+            command:
+            - mysqladmin
+            - ping
+            - -h
+            - localhost
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      
+      # Volumes
+      volumes:
+      - name: mysql-storage
+        persistentVolumeClaim:
+          claimName: mysql-pvc
+
+---
+# MySQL Service
+# Exposes MySQL within the cluster for other services
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: smart-factory
+  labels:
+    app: mysql
+    tier: database
+spec:
+  type: ClusterIP  # Internal cluster access only
+  ports:
+  - name: mysql
+    port: 3306
+    targetPort: 3306
+    protocol: TCP
+  selector:
+    app: mysql
+  # Session affinity for consistent connections
+  sessionAffinity: ClientIP

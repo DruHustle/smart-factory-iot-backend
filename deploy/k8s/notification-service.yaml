@@ -1,10 +1,28 @@
+# ========================================
+# Smart Factory IoT Backend - NotificationService
+# ========================================
+# Handles alerts and email notifications via Microsoft Graph and Logic Apps
+# Follows SOLID principles and Kubernetes best practices
+# ========================================
+
+---
+# NotificationService Deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: notification-service
   namespace: smart-factory
+  labels:
+    app: notification-service
+    tier: backend
+    version: v1
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: notification-service
@@ -12,28 +30,108 @@ spec:
     metadata:
       labels:
         app: notification-service
+        tier: backend
+        version: v1
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
       containers:
       - name: notification-service
-        image: smartfactory.azurecr.io/notification-service:latest
+        image: smartfactory.azurecr.io/notificationservice:latest
+        imagePullPolicy: Always
         ports:
-        - containerPort: 80
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        - name: https
+          containerPort: 443
+          protocol: TCP
         env:
-        - name: ConnectionStrings__DefaultConnection
+        - name: ASPNETCORE_ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: ASPNETCORE_ENVIRONMENT
+        - name: ServiceBus__ConnectionString
           valueFrom:
             secretKeyRef:
-              name: db-secrets
-              key: connection-string
+              name: servicebus-secrets
+              key: servicebus-connection-string
+        - name: Logging__LogLevel__Default
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: Logging__LogLevel__Default
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 3
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 0
+          periodSeconds: 5
+          failureThreshold: 30
+      restartPolicy: Always
+
 ---
+# NotificationService Service
 apiVersion: v1
 kind: Service
 metadata:
   name: notification-service
   namespace: smart-factory
+  labels:
+    app: notification-service
+    tier: backend
 spec:
   type: ClusterIP
   ports:
-  - port: 80
-    targetPort: 80
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP
   selector:
     app: notification-service
+
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: notification-service-hpa
+  namespace: smart-factory
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: notification-service
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70

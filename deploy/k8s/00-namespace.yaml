@@ -1,0 +1,46 @@
+# ========================================
+# Smart Factory IoT Backend - Namespace and ConfigMap
+# ========================================
+# This manifest creates the namespace and common configuration
+# for all Smart Factory microservices
+# ========================================
+
+---
+# Namespace for isolating Smart Factory resources
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: smart-factory
+  labels:
+    name: smart-factory
+    environment: production
+    project: smart-factory-iot
+
+---
+# ConfigMap for shared application configuration
+# Contains non-sensitive configuration values
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: smart-factory
+data:
+  # Application environment
+  ASPNETCORE_ENVIRONMENT: "Production"
+  
+  # Logging configuration
+  Logging__LogLevel__Default: "Information"
+  Logging__LogLevel__Microsoft: "Warning"
+  Logging__LogLevel__Microsoft.Hosting.Lifetime: "Information"
+  
+  # Service discovery endpoints (internal cluster DNS)
+  DeviceService__Url: "http://device-service"
+  IdentityService__Url: "http://identity-service"
+  NotificationService__Url: "http://notification-service"
+  AnalyticsService__Url: "http://analytics-service"
+  TelemetryService__Url: "http://telemetry-service"
+  
+  # MySQL connection configuration (host and database)
+  Database__Host: "mysql"
+  Database__Port: "3306"
+  Database__Name: "SmartFactory"
