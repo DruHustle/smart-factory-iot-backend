@@ -71,23 +71,5 @@ namespace SmartFactory.Services.NotificationService.Application.IntegrationEvent
         }
     }
 
-    /// <summary>
-    /// Local definition of the integration event to avoid direct dependency on AnalyticsService project,
-    /// following the principle of decoupling in microservices.
-    /// </summary>
-    public record AnomalyDetectedIntegrationEvent : IntegrationEvent
-    {
-        public string DeviceId { get; init; }
-        public string AnomalyType { get; init; }
-        public double Value { get; init; }
-        public DateTime Timestamp { get; init; }
 
-        public AnomalyDetectedIntegrationEvent(string deviceId, string anomalyType, double value, DateTime timestamp)
-        {
-            DeviceId = deviceId;
-            AnomalyType = anomalyType;
-            Value = value;
-            Timestamp = timestamp;
-        }
-    }
 }
