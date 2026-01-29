@@ -5,6 +5,11 @@ using Microsoft.Extensions.Logging;
 
 namespace SmartFactory.Services.AnalyticsService.Application.IntegrationEvents
 {
+    /// <summary>
+    /// Handles the TelemetryReceivedIntegrationEvent by processing data through the AnalyticsEngine
+    /// and publishing an AnomalyDetectedIntegrationEvent if an anomaly is found.
+    /// This follows the Single Responsibility Principle by focusing only on the orchestration of telemetry analysis.
+    /// </summary>
     public class TelemetryReceivedIntegrationEventHandler : IIntegrationEventHandler<TelemetryReceivedIntegrationEvent>
     {
         private readonly AnalyticsEngine _analyticsEngine;
