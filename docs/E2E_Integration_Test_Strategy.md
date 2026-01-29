@@ -1,139 +1,113 @@
 # End-to-End Integration Test Strategy for Data Pipeline
 
-This document outlines the strategy for creating a single, comprehensive integration test that verifies the entire data pipeline, from simulated data ingestion to final notification, using a single data point. This approach ensures that all service boundaries and integration points are functioning correctly.
+This document outlines the strategy for verifying the entire data pipeline, from simulated data ingestion to final notification. It provides both a conceptual testing strategy for automated tests and a **step-by-step guide for manual local testing** using Docker and local tools.
 
 ## 1. Data Pipeline Flow Overview
 
-The smart factory data pipeline involves four main services and the Event Bus building block. The flow is triggered by a single telemetry message that is intentionally designed to cause an anomaly.
+The smart factory data pipeline involves five core microservices and the Event Bus. The flow is triggered by a telemetry message that contains values exceeding predefined thresholds.
 
-| Step | Service | Component | Action | Expected Outcome |
-| :--- | :--- | :--- | :--- | :--- |
-| **1. Ingestion** | TelemetryService | `TelemetryFunction.Run` | Receives IoT Hub message (JSON). | Saves to DB, broadcasts via SignalR, publishes `TelemetryReceivedIntegrationEvent`. |
-| **2. Analysis** | AnalyticsService | `TelemetryReceivedIntegrationEventHandler` | Consumes `TelemetryReceivedIntegrationEvent`. | Detects anomaly, publishes `AnomalyDetectedIntegrationEvent`. |
-| **3. Notification** | NotificationService | `AnomalyDetectedIntegrationEventHandler` | Consumes `AnomalyDetectedIntegrationEvent`. | Triggers Logic App (`TriggerLogicAppAsync`), sends email (`SendEmailAsync`). |
+| Step | Service | Action | Expected Outcome |
+| :--- | :--- | :--- | :--- |
+| **1. Ingestion** | `TelemetryService` | Receives telemetry data via REST/IoT Hub. | Saves to MySQL, broadcasts via SignalR, publishes `TelemetryReceivedEvent`. |
+| **2. Analysis** | `AnalyticsService` | Consumes `TelemetryReceivedEvent`. | Detects anomaly (Temp > 80), publishes `AnomalyDetectedEvent`. |
+| **3. Notification** | `NotificationService` | Consumes `AnomalyDetectedEvent`. | Triggers notification logic (Logs/Email/Logic App). |
 
-## 2. The Single Data Point for Testing
+## 2. Local Testing Guide (Step-by-Step)
 
-To ensure the entire pipeline is exercised, the test data point must contain values that trigger the anomaly detection logic in the `AnalyticsEngine`.
+Follow these instructions to verify the application is running correctly in your local development environment.
 
-**Anomaly Detection Logic (from `AnalyticsEngine.cs`):**
-```csharp
-IsAnomaly = vibration > 5.0 || temperature > 80.0
+### Prerequisites
+- **Docker & Docker Compose** installed.
+- **Postman** or **cURL** for API testing.
+- **MySQL Client** (optional, e.g., DBeaver or MySQL Workbench).
+
+### Step 1: Start the Infrastructure
+Launch all services and the database using the optimized Docker Compose configuration.
+```bash
+# Navigate to the root directory
+docker-compose up --build -d
+```
+*Wait approximately 30-60 seconds for MySQL to initialize and services to start.*
+
+### Step 2: Verify Service Health
+Check if all services are healthy using their health check endpoints.
+```bash
+# Verify Device Service
+curl http://localhost:5001/health
+
+# Verify Telemetry Service
+curl http://localhost:5005/health
+```
+*Expected Response: `Healthy` or `200 OK`*
+
+### Step 3: Simulate Telemetry Ingestion
+Send a "High Temperature" telemetry data point to the `TelemetryService`.
+```bash
+curl -X POST http://localhost:5005/api/v1/telemetry \
+-H "Content-Type: application/json" \
+-d '{
+  "DeviceId": "FACTORY-01-CNC",
+  "Temperature": 95.5,
+  "Humidity": 42.0,
+  "Vibration": 1.5,
+  "Timestamp": "2026-01-29T12:00:00Z"
+}'
 ```
 
-**Test Data Point (JSON Payload):**
-
-```json
-{
-  "DeviceId": "TEST-E2E-001",
-  "Temperature": 95.0,
-  "Humidity": 45.0,
-  "Vibration": 2.0,
-  "Timestamp": "2026-01-23T10:00:00Z"
-}
+### Step 4: Verify Data Persistence
+Check if the data was successfully saved to the local MySQL database.
+```bash
+# Connect to MySQL (Password: rootpassword)
+docker exec -it sf-mysql mysql -u root -prootpassword -e "USE SmartFactory; SELECT * FROM TelemetryData WHERE DeviceId='FACTORY-01-CNC';"
 ```
 
-This data point will trigger a **High Temperature** anomaly, which is sufficient to test the full notification path.
+### Step 5: Verify the Event Pipeline (Logs)
+Since the temperature (95.5) is > 80, the `AnalyticsService` should detect an anomaly. Check the logs of the services to see the event flow.
+```bash
+# Check Analytics Service logs for anomaly detection
+docker logs sf-analytics-service | grep "AnomalyDetected"
 
-## 3. Integration Test Implementation Strategy
+# Check Notification Service logs for alert triggering
+docker logs sf-notification-service | grep "Sending notification"
+```
 
-A robust integration test for this scenario requires mocking external dependencies while using the real internal logic of the services.
+## 3. Automated Integration Test Strategy (C#)
+
+For automated CI/CD verification, we use mocked abstractions of external dependencies while running the real domain logic.
 
 ### Key Mocking Requirements
-
-| Dependency | Interface to Mock | Purpose |
+| Dependency | Interface | Purpose |
 | :--- | :--- | :--- |
-| **Event Bus** | `IEventBus` | Capture the published events (`TelemetryReceivedIntegrationEvent` and `AnomalyDetectedIntegrationEvent`) for manual processing in the test. |
-| **Notification** | `INotificationService` | Verify that the final notification methods (`SendEmailAsync`, `TriggerLogicAppAsync`) are called with the correct payload. |
-| **Database** | `TelemetryDbContext` | Use an in-memory database (e.g., `Microsoft.EntityFrameworkCore.InMemory`) to verify data persistence without connecting to a real SQL server. |
+| **Event Bus** | `IEventBus` | Capture and verify published integration events. |
+| **Database** | `DbContext` | Use `InMemory` or `SQLite` for fast, isolated tests. |
 
-### Conceptual Test Structure (C#)
-
-The test should be structured to simulate the asynchronous, decoupled nature of the microservices by manually invoking the event handlers in sequence, using the mocked `IEventBus` to pass the events.
-
+### Conceptual Test Implementation
 ```csharp
 [Fact]
-public async Task SingleDataPoint_ShouldTriggerFullPipeline_ToNotification()
+public async Task HighTemperature_ShouldTriggerAnomalyEvent()
 {
-    // ARRANGE: Setup Mocks and Services
+    // 1. ARRANGE
     var mockEventBus = new Mock<IEventBus>();
-    var mockNotificationService = new Mock<INotificationService>();
-    var dbContext = CreateInMemoryDbContext(); // Helper to create TelemetryDbContext in-memory
-    var loggerFactory = new LoggerFactory();
+    var telemetryService = new TelemetryService(mockEventBus.Object, ...);
+    var analyticsHandler = new TelemetryReceivedEventHandler(new AnalyticsEngine(), mockEventBus.Object);
 
-    // 1. TelemetryService Setup
-    var telemetryFunction = new TelemetryFunction(loggerFactory, dbContext, mockEventBus.Object);
-    var testJsonPayload = "{\"DeviceId\":\"TEST-E2E-001\", \"Temperature\":95.0, \"Humidity\":45.0, \"Vibration\":2.0, \"Timestamp\":\"2026-01-23T10:00:00Z\"}";
-
-    // 2. AnalyticsService Setup
-    var analyticsEngine = new AnalyticsEngine();
-    var analyticsHandler = new TelemetryReceivedIntegrationEventHandler(
-        analyticsEngine, 
-        loggerFactory.CreateLogger<TelemetryReceivedIntegrationEventHandler>(), 
-        mockEventBus.Object
-    );
-
-    // 3. NotificationService Setup
-    var notificationHandler = new AnomalyDetectedIntegrationEventHandler(
-        mockNotificationService.Object, 
-        loggerFactory.CreateLogger<AnomalyDetectedIntegrationEventHandler>()
-    );
-
-    // --- ACT: Simulate the Pipeline ---
-
-    // Step 1: Simulate Ingestion (TelemetryService)
-    var signalRAction = telemetryFunction.Run(testJsonPayload, /* mock FunctionContext */).Result;
-
-    // ASSERT 1: Verify TelemetryService actions
-    Assert.NotNull(signalRAction); // SignalR message was returned
-    Assert.Equal(1, await dbContext.TelemetryRecords.CountAsync()); // Data saved to DB
+    // 2. ACT
+    // Simulate ingestion
+    await telemetryService.ProcessTelemetryAsync(new TelemetryDto { Temperature = 95 });
     
-    // Capture the published TelemetryReceivedIntegrationEvent
-    TelemetryReceivedIntegrationEvent? telemetryEvent = null;
-    mockEventBus.Verify(
-        eb => eb.PublishAsync(It.Is<IntegrationEvent>(e => e is TelemetryReceivedIntegrationEvent)),
-        Times.Once(),
-        "TelemetryReceivedIntegrationEvent was not published."
-    );
-    // Note: In a real test, you would use a callback on the mock to capture the event object.
+    // Simulate Event Bus delivering the event to Analytics
+    var capturedEvent = new TelemetryReceivedEvent { Temperature = 95 };
+    await analyticsHandler.Handle(capturedEvent);
 
-    // Step 2: Simulate Event Bus Delivery to AnalyticsService
-    // Manually create the event object based on the input data for the test
-    telemetryEvent = new TelemetryReceivedIntegrationEvent("TEST-E2E-001", 95.0, 45.0, 2.0, DateTime.Parse("2026-01-23T10:00:00Z"));
-    await analyticsHandler.Handle(telemetryEvent);
-
-    // ASSERT 2: Verify AnalyticsService actions
-    // Capture the published AnomalyDetectedIntegrationEvent
-    AnomalyDetectedIntegrationEvent? anomalyEvent = null;
-    mockEventBus.Verify(
-        eb => eb.PublishAsync(It.Is<IntegrationEvent>(e => e is AnomalyDetectedIntegrationEvent)),
-        Times.Once(),
-        "AnomalyDetectedIntegrationEvent was not published."
-    );
-    // Note: Again, use a callback to capture the event object.
-
-    // Step 3: Simulate Event Bus Delivery to NotificationService
-    // Manually create the anomaly event object for the test
-    anomalyEvent = new AnomalyDetectedIntegrationEvent("TEST-E2E-001", "HighTemperature", 95.0, DateTime.Parse("2026-01-23T10:00:00Z"));
-    await notificationHandler.Handle(anomalyEvent);
-
-    // ASSERT 3: Verify NotificationService actions
-    mockNotificationService.Verify(
-        ns => ns.TriggerLogicAppAsync(It.Is<AlertPayload>(p => p.DeviceId == "TEST-E2E-001" && p.Severity == "Critical")),
-        Times.Once(),
-        "Logic App was not triggered."
-    );
-    mockNotificationService.Verify(
-        ns => ns.SendEmailAsync(It.Is<EmailRequest>(r => r.Subject.Contains("Anomaly Detected"))),
-        Times.Once(),
-        "Email notification was not sent."
-    );
+    // 3. ASSERT
+    mockEventBus.Verify(eb => eb.PublishAsync(It.IsAny<AnomalyDetectedEvent>()), Times.Once());
 }
 ```
 
-## 4. Conclusion
-
-By following this strategy, you can create a single, powerful integration test that verifies the complex, multi-service data flow. This test isolates the core business logic of the services from the complexities of the cloud infrastructure (IoT Hub, Service Bus, SignalR, Logic Apps), providing fast, reliable, and repeatable verification of the entire pipeline.
+## 4. Troubleshooting Local Setup
+- **MySQL Connection Refused**: Ensure the `sf-mysql` container is healthy (`docker ps`).
+- **Port Conflicts**: Ensure ports 5001-5005 and 3306 are not being used by other applications.
+- **Service Crashing**: Check logs using `docker logs <container_name>` to identify missing environment variables or configuration errors.
 
 ***
-*Document Author: Andrew Gotora*
+*Document Author: Manus AI (on behalf of DruHustle)*
