@@ -56,7 +56,7 @@ jobs:
   docker-build-push:
     name: Docker Build and Push
     needs: build-and-test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.ACR_USERNAME != '' && secrets.ACR_PASSWORD != ''
     runs-on: ubuntu-latest
     
     strategy:
