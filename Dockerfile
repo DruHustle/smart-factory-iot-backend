@@ -17,18 +17,19 @@ RUN dotnet restore "src/SmartFactory.sln"
 # Copy the entire source code
 COPY . .
 
-# Build and publish each service
-# We use an argument to specify which service to build
-ARG SERVICE_NAME
-RUN dotnet publish "src/Services/${SERVICE_NAME}/${SERVICE_NAME}.csproj" -c Release -o /app/publish
+# Build and publish all services so runtime can select one via env var.
+RUN dotnet publish "src/Services/DeviceService/DeviceService.csproj" -c Release -o /app/publish/DeviceService && \
+    dotnet publish "src/Services/IdentityService/IdentityService.csproj" -c Release -o /app/publish/IdentityService && \
+    dotnet publish "src/Services/NotificationService/NotificationService.csproj" -c Release -o /app/publish/NotificationService && \
+    dotnet publish "src/Services/AnalyticsService/AnalyticsService.csproj" -c Release -o /app/publish/AnalyticsService && \
+    dotnet publish "src/Services/TelemetryService/TelemetryService.csproj" -c Release -o /app/publish/TelemetryService
 
 # Use the runtime image for the final stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 
-# The entrypoint will be set dynamically or overridden in docker-compose/k8s
-# But we can provide a default based on the SERVICE_NAME
-ARG SERVICE_NAME
-ENV SERVICE_DLL=${SERVICE_NAME}.dll
-ENTRYPOINT ["sh", "-c", "dotnet $SERVICE_DLL"]
+# Select service at runtime (Render env var).
+# Valid values: DeviceService, IdentityService, NotificationService, AnalyticsService, TelemetryService
+ENV SERVICE_NAME=DeviceService
+ENTRYPOINT ["sh", "-c", "dotnet /app/${SERVICE_NAME}/${SERVICE_NAME}.dll"]
