@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Hosting;
-using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using SmartFactory.Services.TelemetryService;
@@ -8,8 +7,7 @@ using SmartFactory.Services.TelemetryService.Infrastructure.Services;
 using SmartFactory.BuildingBlocks.EventBus.Abstractions;
 using SmartFactory.BuildingBlocks.EventBus.Implementations;
 
-var host = new HostBuilder()
-    .ConfigureFunctionsWorkerDefaults()
+var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices(services =>
     {
         // Get connection string from environment variables (configured in Azure/local.settings.json)
