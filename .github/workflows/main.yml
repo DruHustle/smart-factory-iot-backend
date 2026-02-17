@@ -62,7 +62,17 @@ jobs:
     strategy:
       matrix:
         # Define all microservices to be built
-        service: [DeviceService, IdentityService, NotificationService, AnalyticsService, TelemetryService]
+        include:
+          - service: DeviceService
+            image: deviceservice
+          - service: IdentityService
+            image: identityservice
+          - service: NotificationService
+            image: notificationservice
+          - service: AnalyticsService
+            image: analyticsservice
+          - service: TelemetryService
+            image: telemetryservice
     
     steps:
     - name: Checkout Code
@@ -86,8 +96,8 @@ jobs:
         push: true
         # Tag with Git SHA and 'latest'
         tags: |
-          smartfactory.azurecr.io/${{ matrix.service | lower }}:${{ github.sha }}
-          smartfactory.azurecr.io/${{ matrix.service | lower }}:latest
+          smartfactory.azurecr.io/${{ matrix.image }}:${{ github.sha }}
+          smartfactory.azurecr.io/${{ matrix.image }}:latest
         # Cache optimization for faster builds
         cache-from: type=gha
         cache-to: type=gha,mode=max
