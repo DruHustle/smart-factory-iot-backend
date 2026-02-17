@@ -21,8 +21,13 @@ COPY . .
 RUN dotnet publish "src/Services/DeviceService/DeviceService.csproj" -c Release -o /app/publish/DeviceService && \
     dotnet publish "src/Services/IdentityService/IdentityService.csproj" -c Release -o /app/publish/IdentityService && \
     dotnet publish "src/Services/NotificationService/NotificationService.csproj" -c Release -o /app/publish/NotificationService && \
-    dotnet publish "src/Services/AnalyticsService/AnalyticsService.csproj" -c Release -o /app/publish/AnalyticsService && \
-    dotnet publish "src/Services/TelemetryService/TelemetryService.csproj" -c Release -o /app/publish/TelemetryService
+    dotnet publish "src/Services/AnalyticsService/AnalyticsService.csproj" -c Release -p:OutputType=Exe -o /app/publish/AnalyticsService && \
+    dotnet publish "src/Services/TelemetryService/TelemetryService.csproj" -c Release -o /app/publish/TelemetryService && \
+    test -f /app/publish/DeviceService/DeviceService.runtimeconfig.json && \
+    test -f /app/publish/IdentityService/IdentityService.runtimeconfig.json && \
+    test -f /app/publish/NotificationService/NotificationService.runtimeconfig.json && \
+    test -f /app/publish/AnalyticsService/AnalyticsService.runtimeconfig.json && \
+    test -f /app/publish/TelemetryService/TelemetryService.runtimeconfig.json
 
 # Use the runtime image for the final stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
