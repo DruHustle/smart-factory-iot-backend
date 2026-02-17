@@ -1,7 +1,7 @@
 # ========================================
-# Smart Factory IoT Backend - MySQL Database
+# Smart Factory IoT Backend - PostgreSQL Database
 # ========================================
-# This manifest deploys MySQL 8.0 with:
+# This manifest deploys PostgreSQL 16 with:
 # - Persistent storage for data durability
 # - Resource limits for stability
 # - Health checks for reliability
@@ -9,11 +9,11 @@
 # ========================================
 
 ---
-# PersistentVolumeClaim for MySQL data persistence
+# PersistentVolumeClaim for PostgreSQL data persistence
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: mysql-pvc
+  name: postgres-pvc
   namespace: smart-factory
 spec:
   accessModes:
@@ -26,42 +26,47 @@ spec:
   # storageClassName: gp2              # AWS
 
 ---
-# MySQL Deployment
+# PostgreSQL Deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mysql
+  name: postgres
   namespace: smart-factory
   labels:
-    app: mysql
+    app: postgres
     tier: database
 spec:
-  # Single replica for MySQL (stateful workload)
+  # Single replica for PostgreSQL (stateful workload)
   replicas: 1
   strategy:
     type: Recreate  # Ensures only one instance runs at a time
   selector:
     matchLabels:
-      app: mysql
+      app: postgres
   template:
     metadata:
       labels:
-        app: mysql
+        app: postgres
         tier: database
     spec:
       containers:
-      - name: mysql
-        image: mysql:8.0
+      - name: postgres
+        image: postgres:16
         imagePullPolicy: IfNotPresent
         
         # Environment variables from secrets
         env:
-        - name: MYSQL_ROOT_PASSWORD
+        - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
               name: db-secrets
-              key: mysql-root-password
-        - name: MYSQL_DATABASE
+              key: postgres-password
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: db-secrets
+              key: postgres-user
+        - name: POSTGRES_DB
           valueFrom:
             configMapKeyRef:
               name: app-config
@@ -69,14 +74,14 @@ spec:
         
         # Container ports
         ports:
-        - name: mysql
-          containerPort: 3306
+        - name: postgres
+          containerPort: 5432
           protocol: TCP
         
         # Volume mounts for persistent storage
         volumeMounts:
-        - name: mysql-storage
-          mountPath: /var/lib/mysql
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
         
         # Resource limits (adjust based on workload)
         resources:
@@ -87,27 +92,29 @@ spec:
             memory: "1Gi"
             cpu: "500m"
         
-        # Liveness probe - checks if MySQL is running
+        # Liveness probe - checks if PostgreSQL is running
         livenessProbe:
           exec:
             command:
-            - mysqladmin
-            - ping
-            - -h
-            - localhost
+            - pg_isready
+            - -U
+            - postgres
+            - -d
+            - SmartFactory
           initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
         
-        # Readiness probe - checks if MySQL is ready to accept connections
+        # Readiness probe - checks if PostgreSQL is ready to accept connections
         readinessProbe:
           exec:
             command:
-            - mysqladmin
-            - ping
-            - -h
-            - localhost
+            - pg_isready
+            - -U
+            - postgres
+            - -d
+            - SmartFactory
           initialDelaySeconds: 10
           periodSeconds: 5
           timeoutSeconds: 3
@@ -115,29 +122,29 @@ spec:
       
       # Volumes
       volumes:
-      - name: mysql-storage
+      - name: postgres-storage
         persistentVolumeClaim:
-          claimName: mysql-pvc
+          claimName: postgres-pvc
 
 ---
-# MySQL Service
-# Exposes MySQL within the cluster for other services
+# PostgreSQL Service
+# Exposes PostgreSQL within the cluster for other services
 apiVersion: v1
 kind: Service
 metadata:
-  name: mysql
+  name: postgres
   namespace: smart-factory
   labels:
-    app: mysql
+    app: postgres
     tier: database
 spec:
   type: ClusterIP  # Internal cluster access only
   ports:
-  - name: mysql
-    port: 3306
-    targetPort: 3306
+  - name: postgres
+    port: 5432
+    targetPort: 5432
     protocol: TCP
   selector:
-    app: mysql
+    app: postgres
   # Session affinity for consistent connections
   sessionAffinity: ClientIP

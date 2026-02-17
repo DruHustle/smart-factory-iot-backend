@@ -40,7 +40,7 @@ data:
   AnalyticsService__Url: "http://analytics-service"
   TelemetryService__Url: "http://telemetry-service"
   
-  # MySQL connection configuration (host and database)
-  Database__Host: "mysql"
-  Database__Port: "3306"
+  # PostgreSQL connection configuration (host and database)
+  Database__Host: "postgres"
+  Database__Port: "5432"
   Database__Name: "SmartFactory"

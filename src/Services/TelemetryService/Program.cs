@@ -13,12 +13,13 @@ var host = new HostBuilder()
     .ConfigureServices(services =>
     {
         // Get connection string from environment variables (configured in Azure/local.settings.json)
-        var connectionString = Environment.GetEnvironmentVariable("MySqlConnectionString");
+        var connectionString = Environment.GetEnvironmentVariable("PostgresConnectionString")
+            ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
         
         if (!string.IsNullOrEmpty(connectionString))
         {
             services.AddDbContext<TelemetryDbContext>(options =>
-                options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+                options.UseNpgsql(connectionString));
         }
         else
         {

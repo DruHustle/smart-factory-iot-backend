@@ -37,10 +37,10 @@ The system utilizes a hybrid communication model:
 
 ### 2.1. Data Persistence
 
-Each service maintains its own data store to enforce **data ownership** (SRP). The primary data store is **MySQL**, managed via Entity Framework Core (EF Core).
+Each service maintains its own data store to enforce **data ownership** (SRP). The primary data store is **PostgreSQL**, managed via Entity Framework Core (EF Core).
 
-*   **Local Development**: A local MySQL container is used via `docker-compose`.
-*   **Production**: A managed service like Aiven MySQL or Azure Database for MySQL is used, with connection details managed securely via Kubernetes Secrets.
+*   **Local Development**: A local PostgreSQL container is used via `docker-compose`.
+*   **Production**: A managed service like Aiven PostgreSQL or Azure Database for PostgreSQL is used, with connection details managed securely via Kubernetes Secrets.
 
 ## 3. Deployment Architecture
 

@@ -59,6 +59,11 @@ spec:
             secretKeyRef:
               name: db-secrets
               key: connection-string
+        - name: PostgresConnectionString
+          valueFrom:
+            secretKeyRef:
+              name: db-secrets
+              key: connection-string
         - name: IoTHub__ConnectionString
           valueFrom:
             secretKeyRef:

@@ -11,12 +11,12 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Configure DbContext with MySQL support for production/local dev
+// Configure DbContext with PostgreSQL support for production/local dev
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 if (!string.IsNullOrEmpty(connectionString))
 {
     builder.Services.AddDbContext<DeviceDbContext>(options =>
-        options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+        options.UseNpgsql(connectionString));
 }
 else
 {

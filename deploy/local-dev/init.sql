@@ -1,13 +1,9 @@
 -- ========================================
--- Smart Factory IoT Backend - Local Database Initialization
+-- Smart Factory IoT Backend - Local PostgreSQL Initialization
 -- ========================================
 
-CREATE DATABASE IF NOT EXISTS SmartFactory;
-USE SmartFactory;
-
--- The actual table creation is handled by EF Core Migrations.
--- This script ensures the database exists and provides a place
--- for seed data if needed during local development.
+-- The database is created by the POSTGRES_DB environment variable.
+-- Table creation is handled by EF Core migrations.
 
 -- Example seed data (optional)
--- INSERT INTO Devices (Id, Name, Type, Status) VALUES (UUID(), 'Factory-A-Node-1', 'ESP32', 'Active');
+-- INSERT INTO "Devices" ("Id", "Name", "Type", "Status") VALUES (gen_random_uuid(), 'Factory-A-Node-1', 'ESP32', 'Active');

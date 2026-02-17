@@ -3,7 +3,7 @@
 # ========================================
 # This file orchestrates the microservices for local development.
 # Features:
-# - Local MySQL with persistence
+# - Local PostgreSQL with persistence
 # - Service health checks
 # - Environment variable configuration
 # - Network isolation
@@ -35,20 +35,21 @@ services:
   # ----------------------------------------
   # Database Service
   # ----------------------------------------
-  mysql:
-    image: mysql:8.0
-    container_name: sf-mysql
+  postgres:
+    image: postgres:16
+    container_name: sf-postgres
     restart: always
     environment:
-      - MYSQL_ROOT_PASSWORD=rootpassword
-      - MYSQL_DATABASE=SmartFactory
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgrespassword
+      - POSTGRES_DB=SmartFactory
     ports:
-      - "3306:3306"
+      - "5432:5432"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql/data
       - ./deploy/local-dev/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d SmartFactory"]
       timeout: 5s
       retries: 10
     networks:
@@ -64,9 +65,9 @@ services:
     container_name: sf-device-service
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=mysql;Database=SmartFactory;Uid=root;Pwd=rootpassword;
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=SmartFactory;Username=postgres;Password=postgrespassword;SSL Mode=Disable;Trust Server Certificate=true;
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
     ports:
       - "5001:80"
@@ -83,9 +84,9 @@ services:
     container_name: sf-identity-service
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=mysql;Database=SmartFactory;Uid=root;Pwd=rootpassword;
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=SmartFactory;Username=postgres;Password=postgrespassword;SSL Mode=Disable;Trust Server Certificate=true;
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
     ports:
       - "5002:80"
@@ -106,7 +107,7 @@ services:
     depends_on:
       rabbitmq:
         condition: service_started
-      mysql:
+      postgres:
         condition: service_healthy
     ports:
       - "5003:80"
@@ -127,7 +128,7 @@ services:
     depends_on:
       rabbitmq:
         condition: service_started
-      mysql:
+      postgres:
         condition: service_healthy
     ports:
       - "5004:80"
@@ -144,7 +145,8 @@ services:
     container_name: sf-telemetry-service
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=mysql;Database=SmartFactory;Uid=root;Pwd=rootpassword;
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=SmartFactory;Username=postgres;Password=postgrespassword;SSL Mode=Disable;Trust Server Certificate=true;
+      - PostgresConnectionString=Host=postgres;Port=5432;Database=SmartFactory;Username=postgres;Password=postgrespassword;SSL Mode=Disable;Trust Server Certificate=true;
       - RabbitMqConnectionString=amqp://guest:guest@rabbitmq:5672
       - MqttBrokerHost=rabbitmq
       - MqttBrokerPort=1883
@@ -152,7 +154,7 @@ services:
     depends_on:
       rabbitmq:
         condition: service_started
-      mysql:
+      postgres:
         condition: service_healthy
     ports:
       - "5005:80"
@@ -163,7 +165,7 @@ services:
 # Infrastructure Definitions
 # ----------------------------------------
 volumes:
-  mysql_data:
+  postgres_data:
 
 networks:
   sf-network:

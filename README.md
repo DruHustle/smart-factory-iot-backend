@@ -6,7 +6,7 @@
 
 - Event bus: RabbitMQ (`AMQP`)
 - IoT ingestion: MQTT subscriber (`TelemetryService`) + HTTP telemetry endpoint
-- Data: MySQL
+- Data: PostgreSQL
 - Services:
 1. `DeviceService` (REST)
 2. `IdentityService` (REST/auth)
@@ -34,7 +34,7 @@ Services/ports:
 3. `NotificationService` -> `http://localhost:5003`
 4. `AnalyticsService` -> `http://localhost:5004`
 5. `TelemetryService` -> `http://localhost:5005`
-6. MySQL -> `localhost:3306` (`root` / `rootpassword`)
+6. PostgreSQL -> `localhost:5432` (`postgres` / `postgrespassword`)
 7. RabbitMQ AMQP -> `localhost:5672`
 8. RabbitMQ MQTT -> `localhost:1883`
 9. RabbitMQ UI -> `http://localhost:15672` (`guest` / `guest`)
@@ -46,7 +46,7 @@ Services/ports:
 `docker-compose.yml` provisions:
 
 1. RabbitMQ with AMQP and MQTT listeners
-2. MySQL for service persistence
+2. PostgreSQL for service persistence
 3. All backend microservices
 
 Recommended local checks:
@@ -61,7 +61,7 @@ For cloud deployment, provision:
 
 1. Container runtime (AKS/ECS/Render/Fly)
 2. RabbitMQ (managed or self-hosted)
-3. MySQL (managed)
+3. PostgreSQL (managed)
 4. Secret manager for service credentials
 
 If deploying this repo with the root `Dockerfile` on Render:
@@ -79,7 +79,7 @@ The container now publishes all services at build time and runs the one selected
 Minimum secrets per environment:
 
 - RabbitMQ connection string/user/password
-- MySQL connection string/user/password
+- PostgreSQL connection string/user/password
 - Service auth/JWT secrets
 - Optional email/SMS provider keys for notifications
 
@@ -120,4 +120,4 @@ Frontend DB policy there:
 - Development: local PostgreSQL
 - Production: managed/cloud PostgreSQL
 
-Important: this backend currently uses MySQL and RabbitMQ. It does not directly share the frontend PostgreSQL schema.
+Important: this backend uses PostgreSQL and RabbitMQ. It does not directly share the frontend PostgreSQL schema.

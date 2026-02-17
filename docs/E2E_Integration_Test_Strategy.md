@@ -8,7 +8,7 @@ The smart factory data pipeline involves five core microservices and the Event B
 
 | Step | Service | Action | Expected Outcome |
 | :--- | :--- | :--- | :--- |
-| **1. Ingestion** | `TelemetryService` | Receives telemetry data via REST/IoT Hub. | Saves to MySQL, broadcasts via SignalR, publishes `TelemetryReceivedEvent`. |
+| **1. Ingestion** | `TelemetryService` | Receives telemetry data via REST/IoT Hub. | Saves to PostgreSQL, broadcasts via SignalR, publishes `TelemetryReceivedEvent`. |
 | **2. Analysis** | `AnalyticsService` | Consumes `TelemetryReceivedEvent`. | Detects anomaly (Temp > 80), publishes `AnomalyDetectedEvent`. |
 | **3. Notification** | `NotificationService` | Consumes `AnomalyDetectedEvent`. | Triggers notification logic (Logs/Email/Logic App). |
 
@@ -19,7 +19,7 @@ Follow these instructions to verify the application is running correctly in your
 ### Prerequisites
 - **Docker & Docker Compose** installed.
 - **Postman** or **cURL** for API testing.
-- **MySQL Client** (optional, e.g., DBeaver or MySQL Workbench).
+- **PostgreSQL Client** (optional, e.g., DBeaver or pgAdmin).
 
 ### Step 1: Start the Infrastructure
 Launch all services and the database using the optimized Docker Compose configuration.
@@ -27,7 +27,7 @@ Launch all services and the database using the optimized Docker Compose configur
 # Navigate to the root directory
 docker-compose up --build -d
 ```
-*Wait approximately 30-60 seconds for MySQL to initialize and services to start.*
+*Wait approximately 30-60 seconds for PostgreSQL to initialize and services to start.*
 
 ### Step 2: Verify Service Health
 Check if all services are healthy using their health check endpoints.
@@ -55,10 +55,10 @@ curl -X POST http://localhost:5005/api/v1/telemetry \
 ```
 
 ### Step 4: Verify Data Persistence
-Check if the data was successfully saved to the local MySQL database.
+Check if the data was successfully saved to the local PostgreSQL database.
 ```bash
-# Connect to MySQL (Password: rootpassword)
-docker exec -it sf-mysql mysql -u root -prootpassword -e "USE SmartFactory; SELECT * FROM TelemetryData WHERE DeviceId='FACTORY-01-CNC';"
+# Connect to PostgreSQL (Password: postgrespassword)
+docker exec -it sf-postgres psql -U postgres -d SmartFactory -c "SELECT * FROM \"TelemetryRecords\" WHERE \"DeviceId\"='FACTORY-01-CNC';"
 ```
 
 ### Step 5: Verify the Event Pipeline (Logs)
@@ -105,7 +105,7 @@ public async Task HighTemperature_ShouldTriggerAnomalyEvent()
 ```
 
 ## 4. Troubleshooting Local Setup
-- **MySQL Connection Refused**: Ensure the `sf-mysql` container is healthy (`docker ps`).
+- **PostgreSQL Connection Refused**: Ensure the `sf-postgres` container is healthy (`docker ps`).
 - **Port Conflicts**: Ensure ports 5001-5005 and 3306 are not being used by other applications.
 - **Service Crashing**: Check logs using `docker logs <container_name>` to identify missing environment variables or configuration errors.
 

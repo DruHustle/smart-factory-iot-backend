@@ -11,7 +11,7 @@ The architecture adheres to **Domain-Driven Design (DDD)** and **S.O.L.I.D. Prin
 | **Edge Layer** | Raspberry Pi 5, ESP32 Rover, MQTT/AMQP | Data acquisition and gateway functionality. |
 | **IoT Layer** | Azure IoT Hub | Central hub for device connectivity, telemetry ingestion, and command & control (C2D). |
 | **Backend Services** | .NET 8 Microservices (Identity, Device, Telemetry, Analytics, Notification) | Business logic, data processing, and API endpoints. |
-| **Data Layer** | Aiven MySQL, Azure Redis Cache | Persistent storage and high-performance caching. |
+| **Data Layer** | Aiven PostgreSQL, Azure Redis Cache | Persistent storage and high-performance caching. |
 | **Messaging** | Azure Service Bus | Asynchronous event-driven communication (Event Bus). |
 | **Infrastructure** | Terraform, Kubernetes (AKS), Docker | Infrastructure as Code (IaC) and container orchestration. |
 | **CI/CD** | GitHub Actions | Automated build, test, and deployment pipelines. |
@@ -29,11 +29,11 @@ Before starting the deployment, ensure you have the following tools and accounts
 
 ## 3. Local Development Setup (Docker Compose)
 
-For local development and testing, you can use the provided `docker-compose.yml` file to spin up all microservices and a local MySQL database instance.
+For local development and testing, you can use the provided `docker-compose.yml` file to spin up all microservices and a local PostgreSQL database instance.
 
 ### Step 3.1: Start Services
 
-Ensure Docker is running on your machine. The `docker-compose.yml` file will build the service images using the respective `Dockerfile` in each service directory and start a MySQL container.
+Ensure Docker is running on your machine. The `docker-compose.yml` file will build the service images using the respective `Dockerfile` in each service directory and start a PostgreSQL container.
 
 ```bash
 # 1. Ensure the local-dev directory exists and contains the init.sql file
@@ -49,10 +49,10 @@ The services will be available on the following ports:
 *   **Analytics Service**: `http://localhost:5004`
 *   **Telemetry Service**: `http://localhost:5005`
 
-The MySQL database is accessible on `localhost:3306` with the following credentials:
+The PostgreSQL database is accessible on `localhost:5432` with the following credentials:
 *   **Database Name**: `SmartFactory`
-*   **User**: `root`
-*   **Password**: `rootpassword`
+*   **User**: `postgres`
+*   **Password**: `postgrespassword`
 
 ### Step 3.2: Database Migrations
 
@@ -108,7 +108,7 @@ The microservices are containerized and deployed to a Kubernetes cluster (e.g., 
 The deployment is managed via the manifests in the `deploy/k8s/` directory. These manifests are ordered for correct application:
 
 1.  **Namespace and Secrets**: Create the environment and secure credentials.
-2.  **MySQL**: Deploy the database (if using a cluster-local database).
+2.  **PostgreSQL**: Deploy the database (if using a cluster-local database).
 3.  **Microservices**: Deploy the 5 microservices.
 
 ```bash
@@ -116,8 +116,8 @@ The deployment is managed via the manifests in the `deploy/k8s/` directory. Thes
 kubectl apply -f deploy/k8s/00-namespace.yaml
 kubectl apply -f deploy/k8s/01-secrets.yaml
 
-# 2. Deploy MySQL (Optional: Skip if using a managed cloud database)
-kubectl apply -f deploy/k8s/02-mysql.yaml
+# 2. Deploy PostgreSQL (Optional: Skip if using a managed cloud database)
+kubectl apply -f deploy/k8s/02-postgres.yaml
 
 # 3. Deploy Microservices
 kubectl apply -f deploy/k8s/device-service.yaml
