@@ -25,10 +25,9 @@ namespace SmartFactory.Services.TelemetryService
             _eventBus = eventBus;
         }
 
-        [Function("ProcessTelemetry")]
         public async Task<SignalRMessageAction> Run(
-            [EventHubTrigger("messages/events", Connection = "IoTHubConnectionString", IsBatched = false)] string message,
-            FunctionContext context)
+            string message,
+            FunctionContext? context = null)
         {
             return await ProcessInternal(message);
         }
@@ -116,16 +115,6 @@ namespace SmartFactory.Services.TelemetryService
             return response;
         }
 
-        [Function("negotiate")]
-        public static HttpResponseData Negotiate(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req,
-            [SignalRConnectionInfoInput(HubName = "telemetryHub", ConnectionStringSetting = "AzureSignalRConnectionString")] string connectionInfo)
-        {
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            response.Headers.Add("Content-Type", "application/json");
-            response.WriteString(connectionInfo);
-            return response;
-        }
     }
 
     public class SignalRMessageAction

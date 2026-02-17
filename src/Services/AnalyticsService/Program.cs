@@ -21,8 +21,8 @@ namespace SmartFactory.Services.AnalyticsService
                     
                     // 2. Register Event Bus
                     // In a real scenario, the connection string would come from configuration
-                    var connectionString = hostContext.Configuration["AzureServiceBusConnectionString"] ?? "Endpoint=sb://placeholder.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=placeholder";
-                    services.AddSingleton<IEventBus>(sp => new AzureServiceBus(connectionString));
+                    var connectionString = hostContext.Configuration["RabbitMqConnectionString"] ?? "amqp://guest:guest@localhost:5672";
+                    services.AddSingleton<IEventBus>(sp => new RabbitMqEventBus(connectionString, sp));
 
                     // 3. Register Integration Event Handlers
                     services.AddTransient<TelemetryReceivedIntegrationEventHandler>();
@@ -56,7 +56,7 @@ namespace SmartFactory.Services.AnalyticsService
             _logger.LogInformation("Analytics Service is subscribing to events...");
 
             // Subscribe to TelemetryReceivedIntegrationEvent
-            // The AzureServiceBus implementation will now handle the processor setup
+            // The RabbitMQ implementation will handle the consumer setup
             _eventBus.Subscribe<TelemetryReceivedIntegrationEvent, TelemetryReceivedIntegrationEventHandler>();
 
             _logger.LogInformation("Analytics Service successfully subscribed to TelemetryReceivedIntegrationEvent.");

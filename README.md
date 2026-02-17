@@ -1,71 +1,105 @@
 # Smart Factory IoT Backend
 
-A robust, scalable .NET-based microservices backend designed for real-time industrial monitoring and control. This repository provides the core infrastructure and services to connect edge devices (ESP-32 Wrover) via an IoT gateway (Raspberry Pi 5) to the Azure cloud ecosystem.
+.NET 8 microservices backend for industrial telemetry, device management, analytics, and notifications.
 
-## 🚀 Key Features
+## Current Runtime Stack
 
-*   **Microservices Architecture**: Built with .NET 8, following **Domain-Driven Design (DDD)** and **S.O.L.I.D.** principles for high maintainability and scalability.
-*   **IoT Integration**: Seamless connectivity with **Azure IoT Hub** for telemetry ingestion, device twin synchronization, and cloud-to-device (C2D) commands.
-*   **Real-time Analytics**: Dedicated analytics engine for calculating **Overall Equipment Effectiveness (OEE)** and detecting sensor anomalies (temperature, humidity, vibration).
-*   **Cloud-Native Deployment**: Containerized with **Docker** and orchestrated via **Azure Kubernetes Service (AKS)**.
-*   **Infrastructure as Code (IaC)**: Fully automated resource provisioning using **Terraform**.
-*   **Comprehensive CI/CD**: Automated build, test, and push to Azure Container Registry (ACR) via **GitHub Actions**.
-*   **Real-time Dashboards**: Integrated with **Azure SignalR Service** to push live telemetry updates to the frontend.
-*   **Enterprise Security**: Secured with **Microsoft Entra ID (Azure AD)**, RBAC, and **Azure Key Vault** for secrets management.
+- Event bus: RabbitMQ (`AMQP`)
+- IoT ingestion: MQTT subscriber (`TelemetryService`) + HTTP telemetry endpoint
+- Data: MySQL
+- Services:
+1. `DeviceService` (REST)
+2. `TelemetryService` (Functions worker + MQTT ingestion)
+3. `AnalyticsService` (event-driven)
+4. `NotificationService` (event-driven + REST)
+5. `IdentityService` (Microsoft Identity Web)
 
-## 🏗️ Architectural Overview
+## Frontend Alignment Status
 
-The project is organized into five core microservices, each representing a distinct bounded context. For a detailed explanation of the architecture and principles, please see [ARCHITECTURE.md](./ARCHITECTURE.md).
+Frontend repo reviewed:  
+`/Users/andrewgotora/Software Development/GitHub/smart-factory-iot`
 
-| Service | Primary Function | Data Store |
-| :--- | :--- | :--- |
-| **DeviceService** | Manages industrial device metadata, status, and lifecycle. | MySQL |
-| **IdentityService** | Encapsulates Microsoft Identity Web logic for secure authentication. | MySQL |
-| **AnalyticsService** | Processes sensor data to calculate OEE and detect anomalies. | None (Event-driven) |
-| **TelemetryService** | Ingests IoT Hub messages, persists data, and broadcasts updates via SignalR. | MySQL |
-| **NotificationService** | Triggers alerts and sends email notifications via Microsoft Graph and Logic Apps. | None (Event-driven) |
+Compatibility/auth fixes applied there:
+1. Registration now issues JWT + session cookie (same behavior as login).
+2. Frontend auth default API base URL corrected to `http://localhost:3000/api`.
+3. Auth storage handling centralized via shared token helpers.
+4. Missing tRPC server procedure contracts added so frontend type-check passes.
 
-## 🛠️ Technology Stack
+Note: frontend unit tests still require a running database (`DATABASE_URL`) and fail without it.
 
-| Category | Technologies |
-| :--- | :--- |
-| **Frameworks** | .NET 8, ASP.NET Core Web API, Azure Functions |
-| **Cloud (Azure)** | IoT Hub, SignalR, Key Vault, Logic Apps, API Management |
-| **DevOps** | Docker, Kubernetes (AKS), GitHub Actions, Terraform |
-| **Data** | MySQL (Local/Aiven), Azure Redis Cache, EF Core |
-| **Communication** | REST, SignalR, MQTT, AMQP, AsyncAPI |
-
-## 📂 Repository Structure
-
-| Directory | Description |
-| :--- | :--- |
-| `/src` | Contains the .NET microservices, shared building blocks, and test projects. |
-| `/deploy` | **Deployment assets:** Kubernetes manifests (`/k8s`), Terraform IaC (`/terraform`), and local development scripts (`/local-dev`). |
-| `/docs` | **Documentation:** Deployment guide, API specifications, and architecture details. |
-| `/.github` | **CI/CD:** GitHub Actions workflow definitions. |
-| `docker-compose.yml` | Configuration for running all services locally with a MySQL database. |
-| `ARCHITECTURE.md` | Detailed explanation of the architectural design and principles. |
-| `API-SPEC.md` | High-level overview of all RESTful and Asynchronous APIs. |
-
-## 📖 Getting Started
+## Step-By-Step Dev Run (Backend + Frontend)
 
 ### 1. Prerequisites
 
-Ensure you have **Docker**, **Docker Compose**, and the **.NET 8 SDK** installed.
+1. Docker Desktop
+2. .NET SDK 8+
+3. Node.js 20+
+4. `pnpm` 10+
 
-### 2. Local Development Setup
+### 2. Start This Backend
 
-The easiest way to run the entire backend locally is using Docker Compose.
+From this repo:
 
-1.  **Build and Run Services**: This command will build the Docker images for all microservices and start the MySQL database.
-    ```bash
-    docker-compose up --build
-    ```
-2.  **Access Services**: The services will be available on `http://localhost:5001` through `http://localhost:5005`.
-3.  **Database Details**: The local MySQL instance is available at `localhost:3306` with `User: root` and `Password: rootpassword`.
+```bash
+docker compose up --build -d
+```
 
-For detailed setup, deployment to Kubernetes, and cloud configuration, please refer to the [Deployment Guide](./docs/Deployment_Guide.md).
+Services/ports:
+1. `DeviceService` -> `http://localhost:5001`
+2. `IdentityService` -> `http://localhost:5002`
+3. `NotificationService` -> `http://localhost:5003`
+4. `AnalyticsService` -> `http://localhost:5004`
+5. `TelemetryService` -> `http://localhost:5005`
+6. MySQL -> `localhost:3306` (`root` / `rootpassword`)
+7. RabbitMQ AMQP -> `localhost:5672`
+8. RabbitMQ MQTT -> `localhost:1883`
+9. RabbitMQ UI -> `http://localhost:15672` (`guest` / `guest`)
 
-### 3. Frontend Integration
+### 3. Start Frontend Full-Stack Repo
 
-For instructions on how to integrate a React or other SPA frontend, including authentication with the `IdentityService` and real-time data via `SignalR`, see **Section 6** of the [Deployment Guide](./docs/Deployment_Guide.md).
+From frontend repo:
+`/Users/andrewgotora/Software Development/GitHub/smart-factory-iot`
+
+1. Install deps
+```bash
+pnpm install
+```
+
+2. Create `.env` (or use existing) with:
+```bash
+NODE_ENV=development
+PORT=3000
+VITE_API_URL=http://localhost:3000/api
+DATABASE_URL=mysql://root:rootpassword@localhost:3306/SmartFactory
+JWT_SECRET=dev-secret-key
+```
+
+3. Run frontend server + API:
+```bash
+pnpm dev
+```
+
+This starts:
+1. UI on `http://localhost:3000`
+2. tRPC/API on `http://localhost:3000/api/trpc`
+3. Auth endpoints on `http://localhost:3000/api/auth/*`
+
+### 4. Authentication Smoke Test (Frontend)
+
+1. Open `http://localhost:3000`
+2. Register a new account
+3. Verify redirect into app
+4. Refresh browser (session should persist)
+5. Logout and verify return to login
+
+### 5. Backend Test Commands (This Repo)
+
+```bash
+DOTNET_ROLL_FORWARD=Major dotnet test src/SmartFactory.Tests/SmartFactory.Tests.csproj -v minimal
+DOTNET_ROLL_FORWARD=Major dotnet test src/SmartFactory.sln -v minimal
+```
+
+## Known Gaps
+
+1. Frontend tests in `smart-factory-iot` depend on DB state and will fail with `Database not available` unless `DATABASE_URL` is reachable and seeded.
+2. Frontend currently uses its own Node/tRPC backend API contract; this .NET microservice repo is not yet exposed behind a unified API gateway matching that contract.

@@ -3,6 +3,7 @@ using SmartFactory.Services.NotificationService.Application.Interfaces;
 using SmartFactory.Services.NotificationService.Infrastructure.Services;
 using SmartFactory.BuildingBlocks.EventBus.Abstractions;
 using SmartFactory.BuildingBlocks.EventBus.Implementations;
+using SmartFactory.BuildingBlocks.EventBus.Models;
 using SmartFactory.Services.NotificationService.Application.IntegrationEvents;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,8 +22,8 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // Register Event Bus
-var connectionString = builder.Configuration["AzureServiceBusConnectionString"] ?? "Endpoint=sb://placeholder.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=placeholder";
-builder.Services.AddSingleton<IEventBus>(sp => new AzureServiceBus(connectionString));
+var connectionString = builder.Configuration["RabbitMqConnectionString"] ?? "amqp://guest:guest@localhost:5672";
+builder.Services.AddSingleton<IEventBus>(sp => new RabbitMqEventBus(connectionString, sp));
 
 // Register Integration Event Handlers
 builder.Services.AddTransient<AnomalyDetectedIntegrationEventHandler>();

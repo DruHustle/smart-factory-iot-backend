@@ -13,6 +13,26 @@ version: '3.8'
 
 services:
   # ----------------------------------------
+  # RabbitMQ (Event Bus + MQTT endpoint)
+  # ----------------------------------------
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: sf-rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+      - "1883:1883"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    command: >
+      sh -c "rabbitmq-plugins enable --offline rabbitmq_mqtt &&
+             rabbitmq-server"
+    networks:
+      - sf-network
+
+  # ----------------------------------------
   # Database Service
   # ----------------------------------------
   mysql:
@@ -82,7 +102,10 @@ services:
     container_name: sf-notification-service
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - RabbitMqConnectionString=amqp://guest:guest@rabbitmq:5672
     depends_on:
+      rabbitmq:
+        condition: service_started
       mysql:
         condition: service_healthy
     ports:
@@ -100,7 +123,10 @@ services:
     container_name: sf-analytics-service
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - RabbitMqConnectionString=amqp://guest:guest@rabbitmq:5672
     depends_on:
+      rabbitmq:
+        condition: service_started
       mysql:
         condition: service_healthy
     ports:
@@ -119,7 +145,13 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Server=mysql;Database=SmartFactory;Uid=root;Pwd=rootpassword;
+      - RabbitMqConnectionString=amqp://guest:guest@rabbitmq:5672
+      - MqttBrokerHost=rabbitmq
+      - MqttBrokerPort=1883
+      - MqttTopic=smartfactory/telemetry
     depends_on:
+      rabbitmq:
+        condition: service_started
       mysql:
         condition: service_healthy
     ports:

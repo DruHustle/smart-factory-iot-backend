@@ -2,7 +2,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
+using SmartFactory.Services.TelemetryService;
 using SmartFactory.Services.TelemetryService.Infrastructure.Data;
+using SmartFactory.Services.TelemetryService.Infrastructure.Services;
 using SmartFactory.BuildingBlocks.EventBus.Abstractions;
 using SmartFactory.BuildingBlocks.EventBus.Implementations;
 
@@ -25,16 +27,12 @@ var host = new HostBuilder()
                 options.UseInMemoryDatabase("TelemetryDb"));
         }
 
-        var eventBusConnection = Environment.GetEnvironmentVariable("EventBusConnectionString");
-        if (!string.IsNullOrEmpty(eventBusConnection))
-        {
-            services.AddSingleton<IEventBus>(new AzureServiceBus(eventBusConnection));
-        }
-        else
-        {
-            // For testing/development, we could add a mock or local implementation
-            // For now, let's assume it's required or provided via config
-        }
+        var eventBusConnection = Environment.GetEnvironmentVariable("RabbitMqConnectionString")
+            ?? "amqp://guest:guest@localhost:5672";
+        services.AddSingleton<IEventBus>(sp => new RabbitMqEventBus(eventBusConnection, sp));
+
+        services.AddTransient<TelemetryFunction>();
+        services.AddHostedService<MqttTelemetrySubscriberService>();
     })
     .Build();
 
