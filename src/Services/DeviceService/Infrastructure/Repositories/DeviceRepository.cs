@@ -19,7 +19,7 @@ namespace SmartFactory.Services.DeviceService.Infrastructure.Repositories
             return await _context.Devices.ToListAsync();
         }
 
-        public async Task<Device> GetByIdAsync(int id)
+        public async Task<Device?> GetByIdAsync(int id)
         {
             return await _context.Devices.FindAsync(id);
         }

@@ -60,6 +60,7 @@ jobs:
     runs-on: ubuntu-latest
     
     strategy:
+      fail-fast: false
       matrix:
         # Define all microservices to be built
         include:
@@ -92,15 +93,28 @@ jobs:
         fi
 
     - name: Login to Azure Container Registry
+      id: acr-login
       if: steps.acr.outputs.enabled == 'true'
+      continue-on-error: true
       uses: docker/login-action@v3
       with:
         registry: smartfactory.azurecr.io
         username: ${{ secrets.ACR_USERNAME }}
         password: ${{ secrets.ACR_PASSWORD }}
 
-    - name: Build and Push Docker Image
+    - name: Validate ACR login
+      id: acr-auth
       if: steps.acr.outputs.enabled == 'true'
+      run: |
+        if [ "${{ steps.acr-login.outcome }}" = "success" ]; then
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "enabled=false" >> "$GITHUB_OUTPUT"
+          echo "ACR login failed. Check ACR_USERNAME/ACR_PASSWORD secrets and ACR admin credentials."
+        fi
+
+    - name: Build and Push Docker Image
+      if: steps.acr.outputs.enabled == 'true' && steps.acr-auth.outputs.enabled == 'true'
       uses: docker/build-push-action@v5
       with:
         context: .
