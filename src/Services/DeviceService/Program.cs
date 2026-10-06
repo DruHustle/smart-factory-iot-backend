@@ -1,47 +1,104 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Text;
+using System.Net;
+using Npgsql;
 using SmartFactory.Services.DeviceService.Domain.Interfaces;
 using SmartFactory.Services.DeviceService.Infrastructure.Data;
 using SmartFactory.Services.DeviceService.Infrastructure.Repositories;
-using SmartFactory.Services.DeviceService.Infrastructure.BackgroundServices;
+using SmartFactory.Services.DeviceService.Application.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 55 * 1024 * 1024);
+var jwtSecret = builder.Configuration["JWT_SECRET"] ?? Environment.GetEnvironmentVariable("JWT_SECRET");
+if (string.IsNullOrWhiteSpace(jwtSecret) || Encoding.UTF8.GetByteCount(jwtSecret) < 32)
+    throw new InvalidOperationException("JWT_SECRET must be configured with at least 32 bytes for DeviceService.");
 
-// Add services to the container.
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
+{
+    options.MapInboundClaims = false;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true, ValidIssuer = "smart-factory-iot", ValidateAudience = true, ValidAudience = "smart-factory-iot-api",
+        ValidateIssuerSigningKey = true, IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+        ValidateLifetime = true, RoleClaimType = "role", NameClaimType = "name", ClockSkew = TimeSpan.FromSeconds(30),
+    };
+});
+builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme { Name = "Authorization", In = ParameterLocation.Header, Type = SecuritySchemeType.Http, Scheme = "bearer", BearerFormat = "JWT" });
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        { new OpenApiSecurityScheme { Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" } }, Array.Empty<string>() }
+    });
+});
 
-// Configure DbContext with PostgreSQL support for production/local dev
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-if (!string.IsNullOrEmpty(connectionString))
+if (!string.IsNullOrWhiteSpace(connectionString))
 {
-    builder.Services.AddDbContext<DeviceDbContext>(options =>
-        options.UseNpgsql(connectionString));
+    connectionString = ValidatePostgresTls(connectionString, builder.Environment.IsProduction());
+    builder.Services.AddDbContext<DeviceDbContext>(options => options.UseNpgsql(connectionString));
 }
-else
-{
-    // Fallback for isolated unit testing or rapid development
-    builder.Services.AddDbContext<DeviceDbContext>(options =>
-        options.UseInMemoryDatabase("DeviceDb"));
-}
+else if (builder.Environment.IsDevelopment()) builder.Services.AddDbContext<DeviceDbContext>(options => options.UseInMemoryDatabase("DeviceDb"));
+else throw new InvalidOperationException("ConnectionStrings:DefaultConnection is required outside Development.");
 
-// Register Repository (Dependency Inversion Principle)
+builder.Services.AddScoped<EdgeConfigurationPublisher>();
+builder.Services.AddSingleton<RedisAasChangePublisher>();
+builder.Services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<RedisAasChangePublisher>());
+builder.Services.AddHttpClient<AasProvisioningService>(client => client.Timeout = TimeSpan.FromMinutes(2)).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
 builder.Services.AddScoped<IDeviceRepository, DeviceRepository>();
-
-// Register Background Service for OTA Updates (Single Responsibility Principle)
-builder.Services.AddHostedService<UpdateManagerService>();
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+var applyMigrations = builder.Configuration.GetValue<bool>("APPLY_DATABASE_MIGRATIONS");
+var migrationOnly = builder.Configuration.GetValue<bool>("MIGRATION_ONLY");
+if (migrationOnly && !applyMigrations)
+    throw new InvalidOperationException("MIGRATION_ONLY requires APPLY_DATABASE_MIGRATIONS=true.");
+if (applyMigrations)
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    if (string.IsNullOrWhiteSpace(connectionString))
+        throw new InvalidOperationException("Database migrations require ConnectionStrings:DefaultConnection.");
+    await using var migrationScope = app.Services.CreateAsyncScope();
+    var migrationDb = migrationScope.ServiceProvider.GetRequiredService<DeviceDbContext>();
+    await migrationDb.Database.MigrateAsync();
+}
+if (migrationOnly) return;
+if (app.Environment.IsDevelopment()) { app.UseSwagger(); app.UseSwaggerUI(); }
+app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapHealthChecks("/health");
+app.MapGet("/health/ready", async (RedisAasChangePublisher redis, DeviceDbContext database, CancellationToken cancellationToken) =>
+{
+    if (!redis.IsReady)
+        return Results.StatusCode((int)HttpStatusCode.ServiceUnavailable);
+
+    try
+    {
+        return await database.Database.CanConnectAsync(cancellationToken)
+            ? Results.Ok(new { status = "ready" })
+            : Results.StatusCode((int)HttpStatusCode.ServiceUnavailable);
+    }
+    catch
+    {
+        return Results.StatusCode((int)HttpStatusCode.ServiceUnavailable);
+    }
+});
+app.MapControllers();
+app.Run();
+
+static string ValidatePostgresTls(string value, bool production)
+{
+    if (!production) return value;
+    var parsed = new NpgsqlConnectionStringBuilder(value);
+    if (parsed.SslMode != SslMode.VerifyFull || string.IsNullOrWhiteSpace(parsed.RootCertificate))
+        throw new InvalidOperationException("Production PostgreSQL requires SSL Mode=VerifyFull and a mounted provider Root Certificate.");
+    return value;
 }
 
-app.UseHttpsRedirection();
-app.UseAuthorization();
-app.MapControllers();
-
-app.Run();
+public partial class Program { }

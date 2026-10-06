@@ -1,123 +1,32 @@
 # Smart Factory IoT Backend
 
-.NET 8 microservices backend for device management, telemetry ingestion, analytics, and notifications.
+This repository contains five .NET services. Production deploys them **together with the Node API in one Render container**; the React UI is a separate prebuilt Vercel artifact, not a Docker image. The dashboard repository owns the combined Dockerfile and the sole coordinated CI/CD release workflow, triggered by a protected dashboard `main` push. Kubernetes is unnecessary.
 
-## Runtime Stack
+| Service | Responsibility | Production route |
+|---|---|---|
+| DeviceService | AAS provisioning/import, asset revisions and commissioned gateway commands | Private 127.0.0.1:3102 |
+| TelemetryService | Durable MQTT ingestion, dashboard retry outbox and health | Private health 127.0.0.1:3103 |
+| IdentityService | Existing dashboard account profile and current roles | Private 127.0.0.1:3104 |
+| AnalyticsService | SQL sample coverage, gaps and null-safe observed metric summaries | Private 127.0.0.1:3105 |
+| NotificationService | Durable incident inbox delivery through a configured Graph mailbox | Private 127.0.0.1:3106 |
 
-- Event bus: RabbitMQ (`AMQP`)
-- IoT ingestion: MQTT subscriber (`TelemetryService`) + HTTP telemetry endpoint
-- Data: PostgreSQL
-- Services:
-1. `DeviceService` (REST)
-2. `IdentityService` (REST/auth)
-3. `NotificationService` (event-driven + REST)
-4. `AnalyticsService` (event-driven)
-5. `TelemetryService` (functions worker + MQTT)
+Dashboard accounts remain the identity authority. No separate Entra SSO account store is required. Entra client credentials are used only for configured Graph mail and company AAS OAuth integrations. Dashboard roles are reloaded at each private identity/analytics request; anonymous service calls are rejected. Notifications use the shared PostgreSQL inbox/queue and never accept arbitrary email recipients from public requests.
 
-## Prerequisites
-
-1. Docker Desktop
-2. .NET SDK 8+
-
-## Run Backend Locally
-
-From this repo:
-
-```bash
-docker compose up --build -d
-```
-
-Services/ports:
-
-1. `DeviceService` -> `http://localhost:5001`
-2. `IdentityService` -> `http://localhost:5002`
-3. `NotificationService` -> `http://localhost:5003`
-4. `AnalyticsService` -> `http://localhost:5004`
-5. `TelemetryService` -> `http://localhost:5005`
-6. PostgreSQL -> `localhost:5432` (`postgres` / `postgrespassword`)
-7. RabbitMQ AMQP -> `localhost:5672`
-8. RabbitMQ MQTT -> `localhost:1883`
-9. RabbitMQ UI -> `http://localhost:15672` (`guest` / `guest`)
-
-## Infrastructure Setup Details
-
-### Local Infrastructure
-
-`docker-compose.yml` provisions:
-
-1. RabbitMQ with AMQP and MQTT listeners
-2. PostgreSQL for service persistence
-3. All backend microservices
-
-Recommended local checks:
-
-1. RabbitMQ UI reachable at `http://localhost:15672`
-2. Device service health endpoint responds
-3. Telemetry events flow through broker into analytics/notification services
-
-### Production Infrastructure
-
-For cloud deployment, provision:
-
-1. Container runtime (AKS/ECS/Render/Fly)
-2. RabbitMQ (managed or self-hosted)
-3. PostgreSQL (managed)
-4. Secret manager for service credentials
-
-If deploying this repo with the root `Dockerfile` on Render:
-
-1. Use the repo root Dockerfile path.
-2. Set environment variable `SERVICE_NAME` per Render service:
-   - `DeviceService`
-   - `IdentityService`
-   - `NotificationService`
-   - `AnalyticsService`
-   - `TelemetryService`
-
-The container now publishes all services at build time and runs the one selected by `SERVICE_NAME` at runtime.
-
-Minimum secrets per environment:
-
-- RabbitMQ connection string/user/password
-- PostgreSQL connection string/user/password
-- Service auth/JWT secrets
-- Optional email/SMS provider keys for notifications
-
-## End-to-End Validation Flow
-
-1. Start backend stack.
-2. Start frontend stack from `smart-factory-iot`.
-3. Register/login from frontend.
-4. Create device and update thresholds.
-5. Publish telemetry via MQTT and confirm alert/analytics updates.
-6. Validate OTA endpoints and notification configs.
+Use the canonical [local and Vercel/Render guide](https://github.com/DruHustle/smart-factory-iot/blob/main/RENDER_DEPLOYMENT.md) for both environments, shared tokens, database migrations, image context, provider TLS, single-instance MQTT rollout safety, CI/CD and rollback. Start dashboard Compose/BaSyx first, then this repository's Compose services. Replace every `.env.example` placeholder and configure the dashboard DB connection and shared internal service token. Local host ports are Device 5001, Identity 5002, Notifications 5003, Analytics 5004, Telemetry health 5005. All bind to loopback. Company AAS services and managed production databases/broker/Redis remain external to Render.
 
 ## Tests
 
 ```bash
-DOTNET_ROLL_FORWARD=Major dotnet test src/SmartFactory.Tests/SmartFactory.Tests.csproj -v minimal
-DOTNET_ROLL_FORWARD=Major dotnet test src/SmartFactory.sln -v minimal
+dotnet restore src/SmartFactory.sln -p:NuGetAudit=true -p:NuGetAuditMode=all -p:NuGetAuditLevel=high -warnaserror:NU1900,NU1903,NU1904 --force-evaluate
+dotnet test src/SmartFactory.sln -c Release --no-restore
 ```
 
-## CI/CD Notes
+Use a .NET 8 SDK/runtime container if the host has only newer runtimes. The dashboard's `pnpm e2e` covers role and browser workflows; `python3 scripts/bundle-smoke.py` there tests the exact six-service image and real disposable dependencies; `pnpm e2e:system` covers real AAS/MQTT/Pi code with simulated serial equipment. The coordinated release also scans the exact combined image locally with telemetry disabled and fails on high/critical findings. Runtime Node build tools are excluded. See [integration test evidence](docs/E2E_Integration_Test_Strategy.md).
 
-- GitHub Actions builds/tests on every PR and push.
-- Docker publish to ACR runs on `main` pushes.
-- Required secrets for image push:
-  - `ACR_USERNAME`
-  - `ACR_PASSWORD`
+For live AAS acceptance, use the local BaSyx profile and `AAS_LIVE_TESTS=true dotnet test src/SmartFactory.sln --filter FullyQualifiedName~AasxLiveIntegrationTests`. Set `AASX_TEST_CORPUS_DIR` to licensed vendor fixtures for optional parser checks; do not commit vendor assets without distribution permission. Local browser AAS responses are deterministic stubs; they do not certify the company's IDTA conformance.
 
-If ACR credentials are missing or invalid, Docker publish is skipped/fails safely while test/build still run.
+## Runtime limits
 
-## Companion Frontend Repo
+.NET 8 support ends on 2026-11-11. Migrate SDK/runtime/package dependencies and revalidate before that date; see [Microsoft lifecycle dates](https://learn.microsoft.com/en-us/lifecycle/products/microsoft-net-and-net-core). Telemetry has one stable persistent MQTT identity, so Render must use sequential single-instance deployments. Factory downtime is explicitly confirmed by technicians/admins; missing telemetry does not prove downtime. Graph acceptance does not prove mailbox delivery. No automatic firmware OTA receiver exists in the current edge release.
 
-Frontend full-stack app is in:
-
-`/Users/andrewgotora/Software Development/GitHub/smart-factory-iot`
-
-Frontend DB policy there:
-
-- Development: local PostgreSQL
-- Production: managed/cloud PostgreSQL
-
-Important: this backend uses PostgreSQL and RabbitMQ. It does not directly share the frontend PostgreSQL schema.
+[API contracts](API-SPEC.md), [architecture](ARCHITECTURE.md), [troubleshooting](docs/Troubleshooting.md), and [AASX/edge configuration](docs/AASX-and-Edge-Configuration.md) describe supported workflows. Legacy Kubernetes/Cloudflare/ACR artifacts are historical references outside the selected production release.

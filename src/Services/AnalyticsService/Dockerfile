@@ -1,81 +1,15 @@
-# ========================================
-# Smart Factory IoT Backend - AnalyticsService Dockerfile
-# ========================================
-# This Dockerfile follows best practices for .NET microservices:
-# - Multi-stage build for optimized image size
-# - Non-root user for enhanced security
-# - Health check endpoint for container orchestration
-# - Build-time optimizations for faster CI/CD
-# ========================================
-
-# ----------------------------------------
-# Stage 1: Base Runtime Image
-# ----------------------------------------
-# Uses the ASP.NET Core runtime image (smaller than SDK)
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-WORKDIR /app
-
-# Expose HTTP and HTTPS ports
-EXPOSE 80
-EXPOSE 443
-
-# Create a non-root user for running the application (Security Best Practice)
-RUN adduser --disabled-password --gecos "" appuser
-
-# ----------------------------------------
-# Stage 2: Build Stage
-# ----------------------------------------
-# Uses the full SDK image for building the application
+# Optional local service image. Production uses the dashboard Render bundle.
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-WORKDIR /src
-
-# Copy solution and project files first (Layer Caching Optimization)
-# This allows Docker to cache the restore layer if dependencies haven't changed
-COPY ["src/SmartFactory.sln", "src/"]
-COPY ["src/BuildingBlocks/EventBus/EventBus.csproj", "src/BuildingBlocks/EventBus/"]
-COPY ["src/Services/AnalyticsService/AnalyticsService.csproj", "src/Services/AnalyticsService/"]
-
-# Restore NuGet packages (Dependency Inversion Principle - depends on abstractions)
-RUN dotnet restore "src/Services/AnalyticsService/AnalyticsService.csproj"
-
-# Copy the rest of the source code
-COPY . .
-
-# Build the application in Release configuration
-WORKDIR "/src/src/Services/AnalyticsService"
-RUN dotnet build "AnalyticsService.csproj" -c Release -o /app/build
-
-# ----------------------------------------
-# Stage 3: Publish Stage
-# ----------------------------------------
-# Publishes the application with optimizations
-FROM build AS publish
-RUN dotnet publish "AnalyticsService.csproj" \
-    -c Release \
-    -o /app/publish \
-    --no-restore \
-    /p:UseAppHost=false
-
-# ----------------------------------------
-# Stage 4: Final Runtime Image
-# ----------------------------------------
-# Creates the final lightweight image
-FROM base AS final
+WORKDIR /source
+COPY src/BuildingBlocks/ ./src/BuildingBlocks/
+COPY src/Services/AnalyticsService/ ./src/Services/AnalyticsService/
+RUN dotnet publish src/Services/AnalyticsService/AnalyticsService.csproj -c Release -o /published /p:UseAppHost=false
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-
-# Copy published application from publish stage
-COPY --from=publish /app/publish .
-
-# Set ownership to non-root user
-RUN chown -R appuser:appuser /app
-
-# Switch to non-root user (Security Best Practice)
-USER appuser
-
-# Configure health check for Kubernetes liveness/readiness probes
-# Assumes the service exposes a /health endpoint (Single Responsibility Principle)
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost/health || exit 1
-
-# Set the entry point for the container
+COPY --from=build --chown=app:app /published ./
+ENV ASPNETCORE_HTTP_PORTS=8080
+USER app
+EXPOSE 8080
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s CMD curl -f -s http://localhost:8080/health/ready || exit 1
 ENTRYPOINT ["dotnet", "AnalyticsService.dll"]

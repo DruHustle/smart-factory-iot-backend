@@ -14,9 +14,11 @@
 # Uses the ASP.NET Core runtime image (smaller than SDK)
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 WORKDIR /app
+ENV ASPNETCORE_HTTP_PORTS=8080 PORT=8080
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
 # Expose HTTP and HTTPS ports
-EXPOSE 80
+EXPOSE 8080
 EXPOSE 443
 
 # Create a non-root user for running the application (Security Best Practice)
@@ -32,10 +34,9 @@ WORKDIR /src
 # Copy solution and project files first (Layer Caching Optimization)
 # This allows Docker to cache the restore layer if dependencies haven't changed
 COPY ["src/SmartFactory.sln", "src/"]
-COPY ["src/BuildingBlocks/EventBus/EventBus.csproj", "src/BuildingBlocks/EventBus/"]
 COPY ["src/Services/TelemetryService/TelemetryService.csproj", "src/Services/TelemetryService/"]
 
-# Restore NuGet packages (Dependency Inversion Principle - depends on abstractions)
+# Restore NuGet packages
 RUN dotnet restore "src/Services/TelemetryService/TelemetryService.csproj"
 
 # Copy the rest of the source code
@@ -65,6 +66,7 @@ WORKDIR /app
 
 # Copy published application from publish stage
 COPY --from=publish /app/publish .
+COPY --from=build /src/deploy/migrations ./deploy/migrations
 
 # Set ownership to non-root user
 RUN chown -R appuser:appuser /app
@@ -75,7 +77,7 @@ USER appuser
 # Configure health check for Kubernetes liveness/readiness probes
 # Assumes the service exposes a /health endpoint (Single Responsibility Principle)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost/health || exit 1
+    CMD curl --fail --silent --show-error http://localhost:8080/health || exit 1
 
 # Set the entry point for the container
 ENTRYPOINT ["dotnet", "TelemetryService.dll"]

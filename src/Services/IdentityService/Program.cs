@@ -1,35 +1,11 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.Identity.Web;
-using SmartFactory.Services.IdentityService.Application.Interfaces;
-using SmartFactory.Services.IdentityService.Application.Services;
-
+using SmartFactory.BuildingBlocks.DashboardAccess;
 var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"))
-    .EnableTokenAcquisitionToCallDownstreamApi()
-    .AddInMemoryTokenCaches();
-
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-// Register Services
-builder.Services.AddScoped<IIdentityService, IdentityService>();
-
+builder.AddDashboardAccess();
 var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-app.UseHttpsRedirection();
-app.UseAuthentication();
-app.UseAuthorization();
-app.MapControllers();
-
+app.UseDashboardAccess("SELECT id FROM users LIMIT 1");
+app.MapGet("/api/auth/profile", (HttpContext context) => Results.Ok(DashboardRuntime.User(context)));
+app.MapGet("/api/auth/check-role/{role}", (string role, HttpContext context) =>
+    new[] { "viewer", "operator", "engineer", "admin" }.Contains(role)
+      ? Results.Ok(new { role, hasRole = DashboardRuntime.User(context).Role == role })
+      : Results.BadRequest(new { error = "Unknown role" }));
 app.Run();

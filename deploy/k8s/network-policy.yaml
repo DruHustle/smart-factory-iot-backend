@@ -1,0 +1,31 @@
+# Only dashboard pods may call DeviceService. Egress remains unrestricted here
+# because managed database/broker/AAS providers have environment-specific CIDRs.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: device-service-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: smart-factory-device-service
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: smart-factory-dashboard
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+# Worker pods accept no inbound application traffic. Their health checks execute inside the containers.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-workers-no-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: worker
+  policyTypes: [Ingress]
+  ingress: []

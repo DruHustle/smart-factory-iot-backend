@@ -1,129 +1,22 @@
-# ========================================
-# Smart Factory IoT Backend - CI/CD Pipeline
-# ========================================
-# This workflow automates the following:
-# 1. Continuous Integration (CI):
-#    - Restores dependencies
-#    - Builds the solution
-#    - Runs unit and integration tests
-# 2. Continuous Deployment (CD):
-#    - Builds Docker images for each microservice
-#    - Scans images for vulnerabilities (Best Practice)
-#    - Pushes images to Azure Container Registry (ACR)
-# ========================================
-
-name: CI/CD Pipeline
-
+name: Backend quality checks
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-permissions:
-  contents: read
-  packages: write
-
+  push: { branches: [main] }
+  pull_request: { branches: [main] }
+permissions: { contents: read }
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  # ----------------------------------------
-  # Job 1: Build and Test
-  # ----------------------------------------
   build-and-test:
-    name: Build and Test
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 20
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
-    
-    - name: Setup .NET 8.0
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x'
-        
-    - name: Restore Dependencies
-      run: dotnet restore src/SmartFactory.sln
-      
-    - name: Build Solution
-      run: dotnet build src/SmartFactory.sln --no-restore --configuration Release
-      
-    - name: Run Tests
-      run: dotnet test src/SmartFactory.sln --no-build --verbosity normal --configuration Release
-
-  # ----------------------------------------
-  # Job 2: Docker Build and Push
-  # ----------------------------------------
-  docker-build-push:
-    name: Docker Build and Push
-    needs: build-and-test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    
-    strategy:
-      fail-fast: false
-      matrix:
-        # Define all microservices to be built
-        include:
-          - service: DeviceService
-            image: deviceservice
-          - service: IdentityService
-            image: identityservice
-          - service: NotificationService
-            image: notificationservice
-          - service: AnalyticsService
-            image: analyticsservice
-          - service: TelemetryService
-            image: telemetryservice
-    
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Check ACR credentials
-      id: acr
-      run: |
-        if [ -n "${{ secrets.ACR_USERNAME }}" ] && [ -n "${{ secrets.ACR_PASSWORD }}" ]; then
-          echo "enabled=true" >> "$GITHUB_OUTPUT"
-        else
-          echo "enabled=false" >> "$GITHUB_OUTPUT"
-          echo "ACR credentials are missing. Skipping image push."
-        fi
-
-    - name: Login to Azure Container Registry
-      id: acr-login
-      if: steps.acr.outputs.enabled == 'true'
-      continue-on-error: true
-      uses: docker/login-action@v3
-      with:
-        registry: smartfactory.azurecr.io
-        username: ${{ secrets.ACR_USERNAME }}
-        password: ${{ secrets.ACR_PASSWORD }}
-
-    - name: Validate ACR login
-      id: acr-auth
-      if: steps.acr.outputs.enabled == 'true'
-      run: |
-        if [ "${{ steps.acr-login.outcome }}" = "success" ]; then
-          echo "enabled=true" >> "$GITHUB_OUTPUT"
-        else
-          echo "enabled=false" >> "$GITHUB_OUTPUT"
-          echo "ACR login failed. Check ACR_USERNAME/ACR_PASSWORD secrets and ACR admin credentials."
-        fi
-
-    - name: Build and Push Docker Image
-      if: steps.acr.outputs.enabled == 'true' && steps.acr-auth.outputs.enabled == 'true'
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: src/Services/${{ matrix.service }}/Dockerfile
-        push: true
-        # Tag with Git SHA and 'latest'
-        tags: |
-          smartfactory.azurecr.io/${{ matrix.image }}:${{ github.sha }}
-          smartfactory.azurecr.io/${{ matrix.image }}:latest
-        # Cache optimization for faster builds
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with: { dotnet-version: 8.0.x }
+      - name: Audit all NuGet dependencies
+        run: dotnet restore src/SmartFactory.sln -p:NuGetAudit=true -p:NuGetAuditMode=all -p:NuGetAuditLevel=high -warnaserror:NU1900,NU1903,NU1904 --force-evaluate
+      - run: dotnet test src/SmartFactory.sln -c Release --no-restore
+# The dashboard release workflow tests all three pinned repositories, publishes
+# one six-service image, deploys Render by digest, then deploys Vercel.

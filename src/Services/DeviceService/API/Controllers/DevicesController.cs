@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using SmartFactory.Services.DeviceService.Domain.Entities;
 using SmartFactory.Services.DeviceService.Domain.Interfaces;
 using SmartFactory.Services.DeviceService.Application.DTOs;
@@ -17,6 +18,7 @@ namespace SmartFactory.Services.DeviceService.API.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "user,viewer,operator,engineer,admin")]
         public async Task<ActionResult<IEnumerable<DeviceDto>>> GetDevices()
         {
             var devices = await _repository.GetAllAsync();
@@ -37,6 +39,7 @@ namespace SmartFactory.Services.DeviceService.API.Controllers
         }
 
         [HttpGet("{id}")]
+        [Authorize(Roles = "user,viewer,operator,engineer,admin")]
         public async Task<ActionResult<DeviceDto>> GetDevice(int id)
         {
             var d = await _repository.GetByIdAsync(id);
@@ -58,6 +61,7 @@ namespace SmartFactory.Services.DeviceService.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "engineer,admin")]
         public async Task<ActionResult<DeviceDto>> RegisterDevice(DeviceDto deviceDto)
         {
             var device = new Device
@@ -78,37 +82,23 @@ namespace SmartFactory.Services.DeviceService.API.Controllers
         }
 
         [HttpPost("{id}/trigger-update")]
-        public async Task<IActionResult> TriggerUpdate(int id, [FromBody] UpdateRequestDto updateRequest)
+        [Authorize(Roles = "engineer,admin")]
+        public IActionResult TriggerUpdate(int id, [FromBody] UpdateRequestDto updateRequest)
         {
-            var device = await _repository.GetByIdAsync(id);
-            if (device == null) return NotFound();
-
-            // In a real scenario, this would publish an event to a message bus (RabbitMQ/Azure Service Bus)
-            // or notify the device via MQTT/SignalR.
-            device.PendingUpdateVersion = updateRequest.TargetVersion;
-            device.UpdateStatus = "Pending";
-            
-            await _repository.UpdateAsync(device);
-
-            return Accepted(new { Message = $"Update to {updateRequest.TargetVersion} triggered for device {device.DeviceId}" });
+            return StatusCode(StatusCodes.Status501NotImplemented, new
+            {
+                error = "OTA delivery is not configured. No firmware update was queued.",
+            });
         }
 
         [HttpPost("{id}/update-status")]
-        public async Task<IActionResult> UpdateStatus(int id, [FromBody] string status)
+        [Authorize(Roles = "engineer,admin")]
+        public IActionResult UpdateStatus(int id, [FromBody] string status)
         {
-            var device = await _repository.GetByIdAsync(id);
-            if (device == null) return NotFound();
-
-            device.UpdateStatus = status;
-            if (status == "Completed")
+            return StatusCode(StatusCodes.Status501NotImplemented, new
             {
-                device.FirmwareVersion = device.PendingUpdateVersion ?? device.FirmwareVersion;
-                device.PendingUpdateVersion = null;
-                device.LastUpdateDate = DateTime.UtcNow;
-            }
-
-            await _repository.UpdateAsync(device);
-            return Ok();
+                error = "Device-reported OTA status is not configured. No firmware status was changed.",
+            });
         }
     }
 }

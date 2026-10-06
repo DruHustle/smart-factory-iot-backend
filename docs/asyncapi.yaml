@@ -1,29 +1,133 @@
 asyncapi: 2.6.0
 info:
-  title: Smart Factory IoT Telemetry API
-  version: 1.0.0
-  description: API for real-time telemetry data from ESP-32 sensors via Azure IoT Hub.
-
+  title: Smart Factory IoT Edge Telemetry
+  version: 2.0.0
+  description: Normalized MQTT telemetry published by edge gateways and consumed by TelemetryService.
+servers:
+  factoryMqtt:
+    url: "{host}:{port}"
+    protocol: mqtt
+    variables:
+      host:
+        default: localhost
+      port:
+        default: "1883"
 channels:
-  telemetry/events:
-    publish:
+  factory/{site}/{line}/{deviceId}/telemetry:
+    parameters:
+      site:
+        description: Site identifier.
+        schema:
+          type: string
+      line:
+        description: Production line identifier.
+        schema:
+          type: string
+      deviceId:
+        description: Publishing device identifier. A gateway-forwarded child sensor keeps its own device ID and supplies gatewayId in the payload.
+        schema:
+          type: string
+    subscribe:
+      summary: Receive normalized telemetry from an edge gateway.
       message:
-        $ref: '#/components/messages/TelemetryData'
-
+        $ref: "#/components/messages/TelemetryData"
+  factory/{site}/{line}/{deviceId}/heartbeat:
+    parameters:
+      site:
+        schema: { type: string }
+      line:
+        schema: { type: string }
+      deviceId:
+        schema: { type: string }
+    subscribe:
+      message:
+        $ref: "#/components/messages/Heartbeat"
+  factory/{site}/{line}/{deviceId}/commands:
+    parameters:
+      site:
+        schema: { type: string }
+      line:
+        schema: { type: string }
+      deviceId:
+        description: Target gateway identifier.
+        schema: { type: string }
+    publish:
+      summary: Publish desired state or a short-lived device command to one gateway.
+      message:
+        oneOf:
+          - $ref: "#/components/messages/Ada031CommandV2"
 components:
   messages:
     TelemetryData:
+      name: TelemetryData
+      contentType: application/json
       payload:
         type: object
+        required: [deviceId, timestamp]
         properties:
-          deviceId:
-            type: string
-          temperature:
-            type: number
-          humidity:
-            type: number
-          vibration:
-            type: number
+          deviceId: { type: string }
+          gatewayId: { type: [string, "null"] }
+          assetId: { type: [string, "null"] }
+          sensorType: { type: [string, "null"], minLength: 1, maxLength: 64 }
+          sensorStatus: { type: [string, "null"], enum: [ok, read_error, null] }
+          assetSignals:
+            type: object
+            maxProperties: 32
+            additionalProperties:
+              type: number
+              minimum: -4294967295
+              maximum: 4294967295
           timestamp:
-            type: string
-            format: date-time
+            type: integer
+            description: Unix epoch milliseconds in UTC.
+          temperature: { type: [number, "null"] }
+          humidity: { type: [number, "null"], minimum: 0, maximum: 100 }
+          vibration: { type: [number, "null"] }
+          power: { type: [number, "null"] }
+          pressure: { type: [number, "null"] }
+          rpm: { type: [number, "null"] }
+    Heartbeat:
+      name: Heartbeat
+      contentType: application/json
+      payload:
+        type: object
+        required: [deviceId, timestamp, status]
+        properties:
+          deviceId: { type: string }
+          timestamp: { type: integer, description: Unix epoch milliseconds in UTC. }
+          status: { type: string, enum: [online, offline] }
+    Ada031CommandV2:
+      name: Ada031CommandV2
+      contentType: application/json
+      payload:
+        oneOf:
+          - type: object
+            additionalProperties: false
+            required: [schemaVersion, action, commandId, targetAssetId, joint, direction, expiresAt]
+            properties:
+              schemaVersion: { type: integer, const: 2 }
+              action: { type: string, const: jog }
+              commandId: { type: string, minLength: 8, maxLength: 64 }
+              targetAssetId: { type: string, minLength: 1, maxLength: 128 }
+              joint: { type: string, enum: [base, shoulder, elbow, wrist_rotation, gripper] }
+              direction: { type: string, enum: [increase, decrease] }
+              expiresAt: { type: integer, description: UTC epoch milliseconds no more than 30 seconds ahead. }
+          - type: object
+            additionalProperties: false
+            required: [schemaVersion, action, commandId, targetAssetId, profile, expiresAt]
+            properties:
+              schemaVersion: { type: integer, const: 2 }
+              action: { type: string, const: set_profile }
+              commandId: { type: string, minLength: 8, maxLength: 64 }
+              targetAssetId: { type: string, minLength: 1, maxLength: 128 }
+              profile: { type: string, enum: [pick_and_place_repeat, demonstration_moves] }
+              expiresAt: { type: integer, description: UTC epoch milliseconds no more than 30 seconds ahead. }
+          - type: object
+            additionalProperties: false
+            required: [schemaVersion, action, commandId, targetAssetId, expiresAt]
+            properties:
+              schemaVersion: { type: integer, const: 2 }
+              action: { type: string, enum: [neutral, stop_program] }
+              commandId: { type: string, minLength: 8, maxLength: 64 }
+              targetAssetId: { type: string, minLength: 1, maxLength: 128 }
+              expiresAt: { type: integer, description: UTC epoch milliseconds no more than 30 seconds ahead. }

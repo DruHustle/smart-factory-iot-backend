@@ -1,113 +1,36 @@
-# End-to-End Integration Test Strategy for Data Pipeline
+# End-to-End Integration Checks
 
-This document outlines the strategy for verifying the entire data pipeline, from simulated data ingestion to final notification. It provides both a conceptual testing strategy for automated tests and a **step-by-step guide for manual local testing** using Docker and local tools.
+## Automated suites
 
-## 1. Data Pipeline Flow Overview
+The `SmartFactory.Tests` project covers telemetry parsing, persistence, event processing, and DeviceService authorization with isolated test dependencies.
 
-The smart factory data pipeline involves five core microservices and the Event Bus. The flow is triggered by a telemetry message that contains values exceeding predefined thresholds.
-
-| Step | Service | Action | Expected Outcome |
-| :--- | :--- | :--- | :--- |
-| **1. Ingestion** | `TelemetryService` | Receives telemetry data via REST/IoT Hub. | Saves to PostgreSQL, broadcasts via SignalR, publishes `TelemetryReceivedEvent`. |
-| **2. Analysis** | `AnalyticsService` | Consumes `TelemetryReceivedEvent`. | Detects anomaly (Temp > 80), publishes `AnomalyDetectedEvent`. |
-| **3. Notification** | `NotificationService` | Consumes `AnomalyDetectedEvent`. | Triggers notification logic (Logs/Email/Logic App). |
-
-## 2. Local Testing Guide (Step-by-Step)
-
-Follow these instructions to verify the application is running correctly in your local development environment.
-
-### Prerequisites
-- **Docker & Docker Compose** installed.
-- **Postman** or **cURL** for API testing.
-- **PostgreSQL Client** (optional, e.g., DBeaver or pgAdmin).
-
-### Step 1: Start the Infrastructure
-Launch all services and the database using the optimized Docker Compose configuration.
 ```bash
-# Navigate to the root directory
-docker-compose up --build -d
-```
-*Wait approximately 30-60 seconds for PostgreSQL to initialize and services to start.*
-
-### Step 2: Verify Service Health
-Check if all services are healthy using their health check endpoints.
-```bash
-# Verify Device Service
-curl http://localhost:5001/health
-
-# Verify Telemetry Service
-curl http://localhost:5005/health
-```
-*Expected Response: `Healthy` or `200 OK`*
-
-### Step 3: Simulate Telemetry Ingestion
-Send a "High Temperature" telemetry data point to the `TelemetryService`.
-```bash
-curl -X POST http://localhost:5005/api/v1/telemetry \
--H "Content-Type: application/json" \
--d '{
-  "DeviceId": "FACTORY-01-CNC",
-  "Temperature": 95.5,
-  "Humidity": 42.0,
-  "Vibration": 1.5,
-  "Timestamp": "2026-01-29T12:00:00Z"
-}'
+dotnet test src/SmartFactory.sln -v minimal  # .NET 8 SDK and runtime required
 ```
 
-### Step 4: Verify Data Persistence
-Check if the data was successfully saved to the local PostgreSQL database.
-```bash
-# Connect to PostgreSQL (Password: postgrespassword)
-docker exec -it sf-postgres psql -U postgres -d SmartFactory -c "SELECT * FROM \"TelemetryRecords\" WHERE \"DeviceId\"='FACTORY-01-CNC';"
-```
+The dashboard repository's `pnpm e2e` uses disposable PostgreSQL and Playwright for user roles, authentication, assets/AAS, API authorization, and telemetry bridge behavior. It does not use the developer's `.env` database.
 
-### Step 5: Verify the Event Pipeline (Logs)
-Since the temperature (95.5) is > 80, the `AnalyticsService` should detect an anomaly. Check the logs of the services to see the event flow.
-```bash
-# Check Analytics Service logs for anomaly detection
-docker logs sf-analytics-service | grep "AnomalyDetected"
+## Full local flow
 
-# Check Notification Service logs for alert triggering
-docker logs sf-notification-service | grep "Sending notification"
-```
+1. Configure local-only `.env` values and start the dashboard BaSyx/Redis stack first.
+2. Start the backend with `docker compose up --build -d`. Share the session, ingestion, provisioning and dashboard-service tokens only with their intended callers; configure the current dashboard account database.
+3. The supported Compose default is `http://dashboard:3000/api/internal/telemetry` on the shared network. Use `host.docker.internal` only when the API runs on the host. Production requires a private, encrypted service path.
+4. Create a gateway and test asset, export its edge profile, and install it on a Pi with local protocol security settings.
+5. Publish a normalized test message to `factory/{site}/{line}/{deviceId}/telemetry`; verify the MQTT ACL and TelemetryService logs.
+6. Verify backend persistence and, when enabled, dashboard persistence with the separate service token. Confirm a wrong token is rejected.
+7. Check role allow/deny behavior in DeviceService and the dashboard/AAS gateway.
 
-## 3. Automated Integration Test Strategy (C#)
+Use a staging broker and synthetic/test machine values only. The timestamp is Unix epoch milliseconds UTC, not MCU uptime. See the companion edge README for Pi and ESP32 tests.
 
-For automated CI/CD verification, we use mocked abstractions of external dependencies while running the real domain logic.
 
-### Key Mocking Requirements
-| Dependency | Interface | Purpose |
-| :--- | :--- | :--- |
-| **Event Bus** | `IEventBus` | Capture and verify published integration events. |
-| **Database** | `DbContext` | Use `InMemory` or `SQLite` for fast, isolated tests. |
+## Live AAS repository verification
 
-### Conceptual Test Implementation
-```csharp
-[Fact]
-public async Task HighTemperature_ShouldTriggerAnomalyEvent()
-{
-    // 1. ARRANGE
-    var mockEventBus = new Mock<IEventBus>();
-    var telemetryService = new TelemetryService(mockEventBus.Object, ...);
-    var analyticsHandler = new TelemetryReceivedEventHandler(new AnalyticsEngine(), mockEventBus.Object);
+The dashboard E2E uses an upstream stub for deterministic browser coverage. For live API 3.2 acceptance, start the root repository's BaSyx `aas` and Redis Compose profile, then run `python3 scripts/verify-basyx-live.py` here. It checks advertised repository/registry profiles and sends create/read/duplicate/revision-update/stale-update/delete requests through DeviceService. Run `AAS_LIVE_TESTS=true dotnet test src/SmartFactory.sln --filter FullyQualifiedName~AasxLiveIntegrationTests` to upload and download a package with v3.2 timestamps and an embedded file. Set `AASX_TEST_CORPUS_DIR` to licensed vendor packages when running `dotnet test`; the corpus is deliberately not committed. These checks are integration evidence and do not replace the official IDTA conformance/test engine for the exact deployment profile.
 
-    // 2. ACT
-    // Simulate ingestion
-    await telemetryService.ProcessTelemetryAsync(new TelemetryDto { Temperature = 95 });
-    
-    // Simulate Event Bus delivering the event to Analytics
-    var capturedEvent = new TelemetryReceivedEvent { Temperature = 95 };
-    await analyticsHandler.Handle(capturedEvent);
+## Reproducible cross-repository test
 
-    // 3. ASSERT
-    mockEventBus.Verify(eb => eb.PublishAsync(It.IsAny<AnomalyDetectedEvent>()), Times.Once());
-}
-```
+From the dashboard repository, run `pnpm e2e:system` in a Python environment containing the edge requirements. This builds real DeviceService and TelemetryService containers and disposable databases, Redis, and MQTT. It uses the running local BaSyx stack, unique temporary AAS identities, and a simulated serial controller. It verifies profile publication/application, engineer control and viewer denial, named signal preservation, retry deduplication, dashboard outage recovery, and Assistant retrieval. It removes its containers, volumes and AAS records. It does not flash firmware, move hardware, validate cloud TLS/ACLs, or implement OTA.
 
-## 4. Troubleshooting Local Setup
-- **PostgreSQL Connection Refused**: Ensure the `sf-postgres` container is healthy (`docker ps`).
-- **Port Conflicts**: Ensure ports 5001-5005 and 3306 are not being used by other applications.
-- **Service Crashing**: Check logs using `docker logs <container_name>` to identify missing environment variables or configuration errors.
+## Combined Render image acceptance
 
-***
-*Document Author: Manus AI (on behalf of DruHustle)*
+The dashboard `scripts/bundle-smoke.py` runs the actual six-service image with isolated PostgreSQL, Redis and RabbitMQ. It verifies repeatable migrations, all Supervisor processes, non-root execution, live identity role reads, anonymous private-route rejection, durable incident/assignment inbox records, owner-only access, explicit unconfigured mail, null-safe SQL coverage/gaps, dependency outage readiness and recovery. Persistent disposable database volumes ensure restart tests retain real records. .NET Graph transport tests use fake tokens/HTTP handlers and verify the configured sender route, text content, correlation ID and rejection handling without sending email. Actual Graph authorization/mailbox delivery remains a staging acceptance check.

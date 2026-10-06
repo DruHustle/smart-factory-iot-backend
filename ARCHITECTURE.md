@@ -1,62 +1,32 @@
-# Architecture Overview: Smart Factory IoT Backend
+# Backend architecture
 
-The **Smart Factory IoT Backend** is built upon a robust, scalable, and maintainable **Microservices Architecture** following the principles of **Domain-Driven Design (DDD)** and **S.O.L.I.D.** (Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, Dependency Inversion). This design ensures high cohesion within services and low coupling between them, facilitating independent deployment and scaling.
+The dashboard Node API and five .NET services share one non-root, supervised Render container. The static React UI is on Vercel. Only the Node API is public; internal service traffic uses loopback and scoped service tokens. Databases, Redis, CloudAMQP and the company AAS runtime remain managed external systems. Physical gateways and firmware remain on the OT network.
 
-## 1. Architectural Principles
+```mermaid
+flowchart TB
+  UI[Vercel UI and API proxy] --> Node[Node API and account authority]
+  subgraph Render[One Render container]
+    Node -->|Private provisioning token| Device[DeviceService]
+    Node -->|Account delegation| Identity[IdentityService]
+    Node -->|Selected range| Analytics[AnalyticsService]
+    Telemetry[TelemetryService] -->|Durable retry| Node
+    Notifications[NotificationService]
+  end
+  Node --> DashboardDB[(Dashboard PostgreSQL)]
+  Identity --> DashboardDB
+  Analytics --> DashboardDB
+  Notifications -->|Incident inbox and delivery queue| DashboardDB
+  Notifications --> Graph[Configured Microsoft Graph sender]
+  Pi[Pi gateway] -->|MQTT TLS| Broker[CloudAMQP]
+  Broker --> Telemetry
+  Device -->|Scoped commands| Broker
+  Telemetry --> TelemetryDB[(Telemetry PostgreSQL)]
+  Device --> DeviceDB[(Device PostgreSQL)]
+  Device --> AAS[Company AAS repositories and registries]
+```
 
-### 1.1. Domain-Driven Design (DDD)
-The system is decomposed into five core microservices, each corresponding to a distinct **Bounded Context** within the Smart Factory domain:
+Telemetry validates bounded payloads, persists before MQTT acknowledgment, preserves named asset signals and missing values, and retries authenticated dashboard delivery from its PostgreSQL outbox. Stable ingestion IDs and database locks prevent retries from inflating dashboard readings or incidents. Analytics reads the dashboard database directly, so no duplicate AMQP telemetry event is published. Pi command IDs are reserved durably before opening the USB serial port to prevent repeated motion after ambiguous failures. This is an operational control path; it does not replace safety-rated machine interlocks.
 
-| Service | Bounded Context | Core Responsibility |
-| :--- | :--- | :--- |
-| **IdentityService** | Identity & Access Management | User authentication (Microsoft Entra ID) and authorization. |
-| **DeviceService** | Device Management | CRUD operations for industrial device metadata, status, and lifecycle. |
-| **TelemetryService** | Telemetry Ingestion & Persistence | Ingesting data from Azure IoT Hub, persisting raw data, and broadcasting real-time updates via SignalR. |
-| **AnalyticsService** | Operational Analytics | Calculating key metrics like Overall Equipment Effectiveness (OEE) and detecting anomalies. |
-| **NotificationService** | Alerting & Communication | Triggering alerts and sending notifications (email, Logic Apps) based on events. |
+Identity uses current dashboard accounts and roles. Analytics computes range-bounded SQL coverage and gaps; it does not apply a second conflicting set of example thresholds or invent OEE/RUL. Incident thresholds and downtime confirmation remain in Node. Notifications consume the PostgreSQL inbox generated transactionally by incident writes; Graph failures remain visible and retryable. Email is at least once and Graph acceptance is distinct from delivery.
 
-### 1.2. S.O.L.I.D. Principles Implementation
-
-| Principle | Implementation in Architecture |
-| :--- | :--- |
-| **Single Responsibility Principle (SRP)** | Each microservice is responsible for a single, well-defined business capability (e.g., `DeviceService` only manages devices, not identity or analytics). |
-| **Open/Closed Principle (OCP)** | Services are open for extension (e.g., adding a new notification channel) but closed for modification (existing core logic remains untouched). |
-| **Liskov Substitution Principle (LSP)** | Interfaces and base classes are used extensively (e.g., `EventBus` abstraction) ensuring that derived types can be substituted without altering the correctness of the program. |
-| **Interface Segregation Principle (ISP)** | Services communicate via small, client-specific interfaces (e.g., REST APIs for synchronous calls, Event Bus for asynchronous events). |
-| **Dependency Inversion Principle (DIP)** | Dependencies on external resources (databases, message brokers) are abstracted using interfaces and injected via Dependency Injection (DI), allowing for easy substitution (e.g., using an in-memory database for testing). |
-
-## 2. Communication and Data Flow
-
-The system utilizes a hybrid communication model:
-
-| Communication Type | Mechanism | Purpose |
-| :--- | :--- | :--- |
-| **Synchronous** | RESTful APIs (HTTP/S) | Used for direct, request-response operations (e.g., `DeviceService` API calls). |
-| **Asynchronous** | Azure Service Bus (EventBus) | Used for event-driven communication between microservices (e.g., `TelemetryService` publishes a `NewTelemetryEvent` which `AnalyticsService` consumes). |
-| **Real-time** | Azure SignalR Service | Used to push live data updates (telemetry, alerts) from the backend to the connected frontend clients. |
-
-### 2.1. Data Persistence
-
-Each service maintains its own data store to enforce **data ownership** (SRP). The primary data store is **PostgreSQL**, managed via Entity Framework Core (EF Core).
-
-*   **Local Development**: A local PostgreSQL container is used via `docker-compose`.
-*   **Production**: A managed service like Aiven PostgreSQL or Azure Database for PostgreSQL is used, with connection details managed securely via Kubernetes Secrets.
-
-## 3. Deployment Architecture
-
-The entire system is designed for cloud-native deployment, specifically targeting **Azure Kubernetes Service (AKS)**.
-
-| Component | Technology | Role in Deployment |
-| :--- | :--- | :--- |
-| **Containerization** | Docker | Multi-stage Dockerfiles for optimized, secure images (non-root user, health checks). |
-| **Orchestration** | Kubernetes (K8s) | Manages deployment, scaling (HPA), self-healing (probes), and service discovery. |
-| **Configuration** | K8s ConfigMaps & Secrets | Stores non-sensitive and sensitive configuration separately. |
-| **CI/CD** | GitHub Actions | Automates build, test, and push to Azure Container Registry (ACR). |
-| **Infrastructure** | Terraform | Provisions all necessary Azure cloud resources (IoT Hub, Key Vault, SignalR, AKS). |
-
-The Kubernetes manifests (`deploy/k8s/`) are structured to include:
-*   **Namespace and ConfigMap**: Global configuration and isolation.
-*   **Secrets**: Secure storage for connection strings and credentials.
-*   **Deployment**: Defines the desired state (replicas, resource limits, security context).
-*   **Service**: Provides stable internal cluster IP for service-to-service communication.
-*   **Horizontal Pod Autoscaler (HPA)**: Ensures the system scales dynamically based on CPU and Memory utilization.
+Production requires verified PostgreSQL TLS, Redis TLS, CloudAMQP MQTT TLS, private AAS OAuth and scoped credentials. Render runs one instance with a disk to prevent overlapping stable MQTT client IDs. Only confirmed operational downtime is displayed as factory downtime. See the canonical [deployment and release guide](https://github.com/DruHustle/smart-factory-iot/blob/main/RENDER_DEPLOYMENT.md) and dashboard [architecture](https://github.com/DruHustle/smart-factory-iot/blob/main/docs/architecture.md) for full cross-repository data ownership and topology.

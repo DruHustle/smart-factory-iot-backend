@@ -1,0 +1,1 @@
+# Superseded. Use deploy/k8s/migrations with the release-matched digest and a unique Job name per schema release.

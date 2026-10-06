@@ -1,152 +1,153 @@
-# ========================================
-# Smart Factory IoT Backend - TelemetryService
-# ========================================
-# Ingests IoT Hub messages and persists data
-# Follows SOLID principles and Kubernetes best practices
-# ========================================
-
----
-# TelemetryService Deployment
+# MQTT uses one stable, persistent QoS 1 consumer identity. Keep this worker at
+# one replica until shared-subscription and idempotent processing are designed.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: telemetry-service
-  namespace: smart-factory
+  name: smart-factory-telemetry-service
   labels:
-    app: telemetry-service
-    tier: backend
-    version: v1
+    app.kubernetes.io/name: smart-factory-telemetry-service
+    app.kubernetes.io/component: worker
 spec:
-  replicas: 2
+  replicas: 1
+  revisionHistoryLimit: 5
   strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
+    type: Recreate
   selector:
     matchLabels:
-      app: telemetry-service
+      app.kubernetes.io/name: smart-factory-telemetry-service
   template:
     metadata:
       labels:
-        app: telemetry-service
-        tier: backend
-        version: v1
+        app.kubernetes.io/name: smart-factory-telemetry-service
+        app.kubernetes.io/component: worker
     spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
+        runAsGroup: 1000
         fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
       containers:
-      - name: telemetry-service
-        image: smartfactory.azurecr.io/telemetryservice:latest
-        imagePullPolicy: Always
-        ports:
-        - name: http
-          containerPort: 80
-          protocol: TCP
-        - name: https
-          containerPort: 443
-          protocol: TCP
-        env:
-        - name: ASPNETCORE_ENVIRONMENT
-          valueFrom:
-            configMapKeyRef:
-              name: app-config
-              key: ASPNETCORE_ENVIRONMENT
-        - name: ConnectionStrings__DefaultConnection
-          valueFrom:
-            secretKeyRef:
-              name: db-secrets
-              key: connection-string
-        - name: PostgresConnectionString
-          valueFrom:
-            secretKeyRef:
-              name: db-secrets
-              key: connection-string
-        - name: IoTHub__ConnectionString
-          valueFrom:
-            secretKeyRef:
-              name: iot-secrets
-              key: iothub-connection-string
-        - name: SignalR__ConnectionString
-          valueFrom:
-            secretKeyRef:
-              name: signalr-secrets
-              key: signalr-connection-string
-        - name: Logging__LogLevel__Default
-          valueFrom:
-            configMapKeyRef:
-              name: app-config
-              key: Logging__LogLevel__Default
-        resources:
-          requests:
-            memory: "512Mi"
-            cpu: "250m"
-          limits:
-            memory: "1Gi"
-            cpu: "500m"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: http
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 3
-        readinessProbe:
-          httpGet:
-            path: /health/ready
-            port: http
-          initialDelaySeconds: 10
-          periodSeconds: 5
-          timeoutSeconds: 3
-        startupProbe:
-          httpGet:
-            path: /health
-            port: http
-          initialDelaySeconds: 0
-          periodSeconds: 5
-          failureThreshold: 30
-      restartPolicy: Always
-
----
-# TelemetryService Service
-apiVersion: v1
-kind: Service
-metadata:
-  name: telemetry-service
-  namespace: smart-factory
-  labels:
-    app: telemetry-service
-    tier: backend
-spec:
-  type: ClusterIP
-  ports:
-  - name: http
-    port: 80
-    targetPort: http
-    protocol: TCP
-  selector:
-    app: telemetry-service
-
----
-# Horizontal Pod Autoscaler
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: telemetry-service-hpa
-  namespace: smart-factory
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: telemetry-service
-  minReplicas: 2
-  maxReplicas: 10
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
+        - name: telemetry-service
+          image: smartfactory.azurecr.io/telemetryservice:release-placeholder
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: health
+              containerPort: 8080
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Production
+            - name: DOTNET_ENVIRONMENT
+              value: Production
+            - name: ASPNETCORE_HTTP_PORTS
+              value: "8080"
+            - name: PORT
+              value: "8080"
+            - name: PostgresConnectionString
+              valueFrom:
+                secretKeyRef:
+                  name: smart-factory-backend-runtime
+                  key: telemetry-database-connection
+            - name: MqttBrokerHost
+              valueFrom:
+                configMapKeyRef:
+                  name: smart-factory-device-service
+                  key: mqtt-broker-host
+            - name: MqttBrokerPort
+              value: "8883"
+            - name: MqttUseTls
+              value: "true"
+            - name: MqttUsername
+              valueFrom:
+                secretKeyRef:
+                  name: smart-factory-backend-runtime
+                  key: mqtt-service-username
+            - name: MqttPassword
+              valueFrom:
+                secretKeyRef:
+                  name: smart-factory-backend-runtime
+                  key: mqtt-service-password
+            - name: MqttTopic
+              valueFrom:
+                configMapKeyRef:
+                  name: smart-factory-device-service
+                  key: mqtt-topic
+            - name: MqttClientId
+              valueFrom:
+                configMapKeyRef:
+                  name: smart-factory-device-service
+                  key: mqtt-client-id
+            - name: INTERNAL_TELEMETRY_SINK_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: smart-factory-device-service
+                  key: internal-telemetry-sink-url
+            - name: INGESTION_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: smart-factory-backend-runtime
+                  key: ingestion-api-token
+            - name: Logging__LogLevel__Default
+              valueFrom:
+                configMapKeyRef:
+                  name: smart-factory-device-service
+                  key: dotnet-log-level
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: temporary-files
+              mountPath: /tmp
+            - name: aiven-ca
+              mountPath: /run/secrets/aiven-ca.pem
+              subPath: aiven-ca.pem
+              readOnly: true
+          startupProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - curl --fail --silent --show-error http://127.0.0.1:8080/health/live
+            periodSeconds: 5
+            failureThreshold: 30
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - curl --fail --silent --show-error http://127.0.0.1:8080/health/live
+            periodSeconds: 20
+            timeoutSeconds: 3
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - curl --fail --silent --show-error http://127.0.0.1:8080/health/ready
+            periodSeconds: 10
+            timeoutSeconds: 3
+      volumes:
+        - name: aiven-ca
+          secret:
+            secretName: smart-factory-backend-runtime
+            defaultMode: 0440
+            items:
+              - key: aiven-ca-cert
+                path: aiven-ca.pem
+        - name: temporary-files
+          emptyDir:
+            medium: Memory
+            sizeLimit: 128Mi

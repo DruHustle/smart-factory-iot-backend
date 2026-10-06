@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: smart-factory
+resources:
+  - backend-config.yaml
+  - device-service.yaml
+  - telemetry-service.yaml
+  - network-policy.yaml
+images:
+  - name: smartfactory.azurecr.io/deviceservice
+    newName: smartfactory.azurecr.io/deviceservice
+    digest: sha256:REPLACE_WITH_64_HEX_DIGEST
+  - name: smartfactory.azurecr.io/telemetryservice
+    newName: smartfactory.azurecr.io/telemetryservice
+    digest: sha256:REPLACE_WITH_64_HEX_DIGEST

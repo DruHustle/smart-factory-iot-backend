@@ -1,3 +1,4 @@
+# LOCAL DEVELOPMENT ONLY. This in-cluster PostgreSQL example is excluded from the production Kustomization.
 # ========================================
 # Smart Factory IoT Backend - PostgreSQL Database
 # ========================================

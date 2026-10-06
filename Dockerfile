@@ -4,7 +4,6 @@ WORKDIR /src
 
 # Copy the solution file and restore all projects
 COPY ["src/SmartFactory.sln", "src/"]
-COPY ["src/BuildingBlocks/EventBus/EventBus.csproj", "src/BuildingBlocks/EventBus/"]
 COPY ["src/Services/AnalyticsService/AnalyticsService.csproj", "src/Services/AnalyticsService/"]
 COPY ["src/Services/DeviceService/DeviceService.csproj", "src/Services/DeviceService/"]
 COPY ["src/Services/IdentityService/IdentityService.csproj", "src/Services/IdentityService/"]
@@ -32,9 +31,13 @@ RUN dotnet publish "src/Services/DeviceService/DeviceService.csproj" -c Release 
 # Use the runtime image for the final stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
-COPY --from=build /app/publish .
+COPY --from=build --chown=app:app /app/publish .
+COPY --from=build --chown=app:app /src/deploy/migrations ./deploy/migrations
+COPY --chown=app:app deploy/run-service.sh /app/run-service
+RUN chmod 0555 /app/run-service
 
 # Select service at runtime (Render env var).
 # Valid values: DeviceService, IdentityService, NotificationService, AnalyticsService, TelemetryService
 ENV SERVICE_NAME=DeviceService
-ENTRYPOINT ["sh", "-c", "dotnet /app/${SERVICE_NAME}/${SERVICE_NAME}.dll"]
+USER app
+ENTRYPOINT ["/app/run-service"]

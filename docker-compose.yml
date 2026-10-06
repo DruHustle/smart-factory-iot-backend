@@ -1,172 +1,155 @@
-# ========================================
-# Smart Factory IoT Backend - Local Development
-# ========================================
-# This file orchestrates the microservices for local development.
-# Features:
-# - Local PostgreSQL with persistence
-# - Service health checks
-# - Environment variable configuration
-# - Network isolation
-# ========================================
-
-version: '3.8'
-
+name: smart-factory-iot-backend
 services:
-  # ----------------------------------------
-  # RabbitMQ (Event Bus + MQTT endpoint)
-  # ----------------------------------------
   rabbitmq:
-    image: rabbitmq:3.13-management
-    container_name: sf-rabbitmq
-    restart: always
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-      - "1883:1883"
+    image: rabbitmq:4.3.6-management
+    restart: unless-stopped
+    ports: ["127.0.0.1:5672:5672", "127.0.0.1:15672:15672", "127.0.0.1:1883:1883"]
     environment:
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
-    command: >
-      sh -c "rabbitmq-plugins enable --offline rabbitmq_mqtt &&
-             rabbitmq-server"
-    networks:
-      - sf-network
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:?Set broker user in .env}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:?Set broker password in .env}
+    command: >-
+      sh -c "rabbitmq-plugins enable --offline rabbitmq_mqtt && rabbitmq-server"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [sf-network]
 
-  # ----------------------------------------
-  # Database Service
-  # ----------------------------------------
   postgres:
     image: postgres:16
-    container_name: sf-postgres
-    restart: always
+    restart: unless-stopped
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgrespassword
-      - POSTGRES_DB=SmartFactory
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:?Set database user in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set database password in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-SmartFactory}
+    ports: ["127.0.0.1:5433:5432"]
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./deploy/local-dev/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./deploy/local-dev/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d SmartFactory"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
       timeout: 5s
-      retries: 10
-    networks:
-      - sf-network
+      retries: 12
+    networks: [sf-network]
 
-  # ----------------------------------------
-  # Device Service
-  # ----------------------------------------
+  # The entrypoint init hook runs only for an empty volume; this repeatable
+  # preparation step also repairs schema additions on existing local volumes.
+  telemetry-schema-prepare:
+    image: postgres:16
+    restart: "no"
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGUSER: ${POSTGRES_USER:?Set database user in .env}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set database password in .env}
+      PGDATABASE: ${POSTGRES_DB:-SmartFactory}
+    command: ["sh", "-c", "psql -v ON_ERROR_STOP=1 -f /migrations/local-dev-init.sql"]
+    volumes:
+      - ./deploy/local-dev/init.sql:/migrations/local-dev-init.sql:ro
+    depends_on: { postgres: { condition: service_healthy } }
+    networks: [sf-network]
+
   device-service:
-    build:
-      context: .
-      dockerfile: src/Services/DeviceService/Dockerfile
-    container_name: sf-device-service
+    build: { context: ., dockerfile: src/Services/DeviceService/Dockerfile }
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=SmartFactory;Username=postgres;Password=postgrespassword;SSL Mode=Disable;Trust Server Certificate=true;
-    depends_on:
-      postgres:
-        condition: service_healthy
-    ports:
-      - "5001:80"
-    networks:
-      - sf-network
+      ASPNETCORE_ENVIRONMENT: Development
+      APPLY_DATABASE_MIGRATIONS: ${APPLY_DATABASE_MIGRATIONS:-true}
+      # Commands for physical gateways must use the same broker as the Pi,
+      # with a dedicated identity scoped to gateway command topics.
+      MqttBrokerHost: ${EDGE_COMMAND_MQTT_HOST:-rabbitmq}
+      MqttBrokerPort: ${EDGE_COMMAND_MQTT_PORT:-1883}
+      MqttUsername: ${EDGE_COMMAND_MQTT_USERNAME:-${RABBITMQ_DEFAULT_USER}}
+      MqttPassword: ${EDGE_COMMAND_MQTT_PASSWORD:-${RABBITMQ_DEFAULT_PASS}}
+      MqttUseTls: ${EDGE_COMMAND_MQTT_USE_TLS:-false}
+      EDGE_SITE_ID: ${EDGE_SITE_ID:-factory-a}
+      EDGE_LINE_ID: ${EDGE_LINE_ID:-line-1}
+      JWT_SECRET: ${JWT_SECRET:?Set shared dashboard JWT secret in .env}
+      AAS_PROVISIONING_TOKEN: ${AAS_PROVISIONING_TOKEN:?Set private provisioner token in .env}
+      REDIS_URL: ${DEVICE_SERVICE_REDIS_URL:-redis://:${REDIS_PASSWORD:?Set the same Redis password as the dashboard stack}@redis:6379}
+      AAS_REPOSITORY_URL: ${AAS_REPOSITORY_URL:-http://aas-repository:8081}
+      AAS_REPO_URL: ${AAS_REPO_URL:-}
+      AAS_SUBMODEL_REPOSITORY_URL: ${AAS_SUBMODEL_REPOSITORY_URL:-http://submodel-repository:8083}
+      AAS_CONCEPT_DESCRIPTION_REPOSITORY_URL: ${AAS_CONCEPT_DESCRIPTION_REPOSITORY_URL:-http://concept-description-repository:8085}
+      AASX_FILE_SERVER_URL: ${AASX_FILE_SERVER_URL:-http://aasx-file-server:8086}
+      AAS_REGISTRY_URL: ${AAS_REGISTRY_URL:-http://aas-registry:8082}
+      AAS_SUBMODEL_REGISTRY_URL: ${AAS_SUBMODEL_REGISTRY_URL:-http://submodel-registry:8084}
+      AAS_REPOSITORY_REGISTRY_INTEGRATION: ${AAS_REPOSITORY_REGISTRY_INTEGRATION:-true}
+      AAS_ALLOW_UNAUTHENTICATED_LOCAL: ${AAS_ALLOW_UNAUTHENTICATED_LOCAL:-true}
+      AAS_ALLOW_UNAUTHENTICATED_PRIVATE: ${AAS_ALLOW_UNAUTHENTICATED_PRIVATE:-false}
+      AAS_OIDC_TOKEN_URL: ${AAS_OIDC_TOKEN_URL:-}
+      AAS_OIDC_DISCOVERY_URL: ${AAS_OIDC_DISCOVERY_URL:-}
+      AAS_OIDC_SCOPE: ${AAS_OIDC_SCOPE:-}
+      AAS_OIDC_CLIENT_ID: ${AAS_OIDC_CLIENT_ID:-}
+      AAS_OIDC_CLIENT_SECRET: ${AAS_OIDC_CLIENT_SECRET:-}
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-SmartFactory};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};SSL Mode=Disable
+    depends_on: { postgres: { condition: service_healthy } }
+    ports: ["127.0.0.1:5001:8080"]
+    networks: [sf-network, aas-shared]
 
-  # ----------------------------------------
-  # Identity Service
-  # ----------------------------------------
   identity-service:
-    build:
-      context: .
-      dockerfile: src/Services/IdentityService/Dockerfile
-    container_name: sf-identity-service
+    build: { context: ., dockerfile: src/Services/IdentityService/Dockerfile }
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=SmartFactory;Username=postgres;Password=postgrespassword;SSL Mode=Disable;Trust Server Certificate=true;
-    depends_on:
-      postgres:
-        condition: service_healthy
-    ports:
-      - "5002:80"
-    networks:
-      - sf-network
+      ASPNETCORE_ENVIRONMENT: Development
+      DASHBOARD_DATABASE_CONNECTION: ${DASHBOARD_DATABASE_CONNECTION:?Set dashboard database connection in .env}
+      DASHBOARD_SERVICE_TOKEN: ${DASHBOARD_SERVICE_TOKEN:?Set the shared 32-byte service token}
+    ports: ["127.0.0.1:5002:8080"]
+    networks: [sf-network, aas-shared]
 
-  # ----------------------------------------
-  # Notification Service
-  # ----------------------------------------
   notification-service:
-    build:
-      context: .
-      dockerfile: src/Services/NotificationService/Dockerfile
-    container_name: sf-notification-service
+    build: { context: ., dockerfile: src/Services/NotificationService/Dockerfile }
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - RabbitMqConnectionString=amqp://guest:guest@rabbitmq:5672
-    depends_on:
-      rabbitmq:
-        condition: service_started
-      postgres:
-        condition: service_healthy
-    ports:
-      - "5003:80"
-    networks:
-      - sf-network
+      ASPNETCORE_ENVIRONMENT: Development
+      DASHBOARD_DATABASE_CONNECTION: ${DASHBOARD_DATABASE_CONNECTION:?Set dashboard database connection in .env}
+      DASHBOARD_SERVICE_TOKEN: ${DASHBOARD_SERVICE_TOKEN:?Set the shared 32-byte service token}
+      GRAPH_TENANT_ID: ${GRAPH_TENANT_ID:-}
+      GRAPH_CLIENT_ID: ${GRAPH_CLIENT_ID:-}
+      GRAPH_CLIENT_SECRET: ${GRAPH_CLIENT_SECRET:-}
+      GRAPH_SENDER_USER: ${GRAPH_SENDER_USER:-}
+      GRAPH_ALLOWED_RECIPIENT_DOMAINS: ${GRAPH_ALLOWED_RECIPIENT_DOMAINS:-}
+    ports: ["127.0.0.1:5003:8080"]
+    networks: [sf-network, aas-shared]
 
-  # ----------------------------------------
-  # Analytics Service
-  # ----------------------------------------
   analytics-service:
-    build:
-      context: .
-      dockerfile: src/Services/AnalyticsService/Dockerfile
-    container_name: sf-analytics-service
+    build: { context: ., dockerfile: src/Services/AnalyticsService/Dockerfile }
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - RabbitMqConnectionString=amqp://guest:guest@rabbitmq:5672
-    depends_on:
-      rabbitmq:
-        condition: service_started
-      postgres:
-        condition: service_healthy
-    ports:
-      - "5004:80"
-    networks:
-      - sf-network
+      ASPNETCORE_ENVIRONMENT: Development
+      DASHBOARD_DATABASE_CONNECTION: ${DASHBOARD_DATABASE_CONNECTION:?Set dashboard database connection in .env}
+      DASHBOARD_SERVICE_TOKEN: ${DASHBOARD_SERVICE_TOKEN:?Set the shared 32-byte service token}
+    ports: ["127.0.0.1:5004:8080"]
+    networks: [sf-network, aas-shared]
 
-  # ----------------------------------------
-  # Telemetry Service
-  # ----------------------------------------
   telemetry-service:
-    build:
-      context: .
-      dockerfile: src/Services/TelemetryService/Dockerfile
-    container_name: sf-telemetry-service
+    build: { context: ., dockerfile: src/Services/TelemetryService/Dockerfile }
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=SmartFactory;Username=postgres;Password=postgrespassword;SSL Mode=Disable;Trust Server Certificate=true;
-      - PostgresConnectionString=Host=postgres;Port=5432;Database=SmartFactory;Username=postgres;Password=postgrespassword;SSL Mode=Disable;Trust Server Certificate=true;
-      - RabbitMqConnectionString=amqp://guest:guest@rabbitmq:5672
-      - MqttBrokerHost=rabbitmq
-      - MqttBrokerPort=1883
-      - MqttTopic=smartfactory/telemetry
+      ASPNETCORE_ENVIRONMENT: Development
+      DOTNET_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-SmartFactory};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};SSL Mode=Disable
+      PostgresConnectionString: Host=postgres;Port=5432;Database=${POSTGRES_DB:-SmartFactory};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};SSL Mode=Disable
+      # Default to local RabbitMQ; override TELEMETRY_MQTT_* to ingest from
+      # the physical gateway's CloudAMQP broker during local dashboard tests.
+      MqttBrokerHost: ${TELEMETRY_MQTT_HOST:-rabbitmq}
+      MqttBrokerPort: ${TELEMETRY_MQTT_PORT:-1883}
+      MqttUsername: ${TELEMETRY_MQTT_USERNAME}
+      MqttPassword: ${TELEMETRY_MQTT_PASSWORD}
+      MqttUseTls: ${TELEMETRY_MQTT_USE_TLS}
+      MqttTopic: ${TELEMETRY_MQTT_TOPIC}
+      MqttHeartbeatTopic: ${TELEMETRY_MQTT_HEARTBEAT_TOPIC}
+      INTERNAL_TELEMETRY_SINK_URL: ${INTERNAL_TELEMETRY_SINK_URL:-http://dashboard:3000/api/internal/telemetry}
+      INGESTION_API_TOKEN: ${INGESTION_API_TOKEN:-}
     depends_on:
-      rabbitmq:
-        condition: service_started
-      postgres:
-        condition: service_healthy
-    ports:
-      - "5005:80"
-    networks:
-      - sf-network
+      rabbitmq: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+      telemetry-schema-prepare: { condition: service_completed_successfully }
+    ports: ["127.0.0.1:5005:8080"]
+    networks: [sf-network, aas-shared]
 
-# ----------------------------------------
-# Infrastructure Definitions
-# ----------------------------------------
 volumes:
   postgres_data:
-
 networks:
   sf-network:
     driver: bridge
+  aas-shared:
+    name: smart-factory-iot-shared
+    external: true
