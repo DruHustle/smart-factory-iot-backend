@@ -78,7 +78,8 @@ Thumbs.db
 # Environment Variables
 .env
 .env.*
-!.env.example
+!.env.local.example
+!.env.prod.example
 appsettings.Development.json
 appsettings.Local.json
 

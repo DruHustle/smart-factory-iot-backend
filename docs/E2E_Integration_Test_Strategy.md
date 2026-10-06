@@ -8,12 +8,12 @@ The `SmartFactory.Tests` project covers telemetry parsing, persistence, event pr
 dotnet test src/SmartFactory.sln -v minimal  # .NET 8 SDK and runtime required
 ```
 
-The dashboard repository's `pnpm e2e` uses disposable PostgreSQL and Playwright for user roles, authentication, assets/AAS, API authorization, and telemetry bridge behavior. It does not use the developer's `.env` database.
+The dashboard repository's `pnpm e2e` uses disposable PostgreSQL and Playwright for user roles, authentication, assets/AAS, API authorization, and telemetry bridge behavior. It does not use the developer's `.env.local` database.
 
 ## Full local flow
 
-1. Configure local-only `.env` values and start the dashboard BaSyx/Redis stack first.
-2. Start the backend with `docker compose up --build -d`. Share the session, ingestion, provisioning and dashboard-service tokens only with their intended callers; configure the current dashboard account database.
+1. Configure local-only `.env.local` values and start the dashboard BaSyx/Redis stack first.
+2. Start the backend with `docker compose --env-file .env.local up --build -d`. Share the session, ingestion, provisioning and dashboard-service tokens only with their intended callers; configure the current dashboard account database.
 3. The supported Compose default is `http://dashboard:3000/api/internal/telemetry` on the shared network. Use `host.docker.internal` only when the API runs on the host. Production requires a private, encrypted service path.
 4. Create a gateway and test asset, export its edge profile, and install it on a Pi with local protocol security settings.
 5. Publish a normalized test message to `factory/{site}/{line}/{deviceId}/telemetry`; verify the MQTT ACL and TelemetryService logs.

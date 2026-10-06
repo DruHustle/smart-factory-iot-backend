@@ -12,7 +12,7 @@ The IDTA AASX 3.2.0 specification archive includes `examples/IDTA-01005_Example.
 
 ## Repository and registry configuration
 
-The companion dashboard repository's `docker compose --profile aas up -d --wait` starts BaSyx Go 1.1.0 beside the backend: AAS Repository 8081, AAS Registry 8082, Submodel Repository 8083, Submodel Registry 8084, Concept Description Repository 8085, and AASX File Server 8086. Host ports bind to loopback only, the BaSyx database is persistent, and both Compose projects communicate through the private `smart-factory-iot-shared` network. Check each service's `/description` for its advertised API 3.2 profiles.
+The companion dashboard repository's `docker compose --env-file .env.local --profile aas up -d --wait` starts BaSyx Go 1.1.0 beside the backend: AAS Repository 8081, AAS Registry 8082, Submodel Repository 8083, Submodel Registry 8084, Concept Description Repository 8085, and AASX File Server 8086. Host ports bind to loopback only, the BaSyx database is persistent, and both Compose projects communicate through the private `smart-factory-iot-shared` network. Check each service's `/description` for its advertised API 3.2 profiles.
 
 Configure DeviceService with the following endpoints and identity settings:
 
@@ -39,7 +39,7 @@ For a single-host production deployment without an identity provider, keep every
 Start the bundled stack from the companion dashboard repository with:
 
 ```bash
-docker compose --profile aas up -d --build --wait
+docker compose --env-file .env.local --profile aas up -d --build --wait
 ```
 
 For production-mode DeviceService with the private stack, configure:
