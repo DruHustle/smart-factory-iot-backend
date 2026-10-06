@@ -9,13 +9,13 @@ public sealed class NotificationDeliveryWorker(DashboardStore store, IServiceSco
         while (!stoppingToken.IsCancellationRequested) {
             try {
                 using var scope = scopes.CreateScope();
-                var sender = scope.ServiceProvider.GetRequiredService<GraphMailSender>();
+                var sender = scope.ServiceProvider.GetRequiredService<ResendMailSender>();
                 if (!await DeliverOne(sender, stoppingToken)) await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
             } catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
             catch { logger.LogWarning("Notification queue unavailable; delivery will retry."); await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken); }
         }
     }
-    public async Task<bool> DeliverOne(GraphMailSender sender, CancellationToken ct)
+    public async Task<bool> DeliverOne(ResendMailSender sender, CancellationToken ct)
     {
         // Atomic claim with an expiring lease survives restarts. Other workers skip claimed rows.
         const string claim = """
@@ -46,7 +46,7 @@ public sealed class NotificationDeliveryWorker(DashboardStore store, IServiceSco
             catch (Exception error) {
                 state = attempts >= 8 ? "failed" : "retrying";
                 // Never persist SDK exception bodies, recipient addresses, credentials or tokens.
-                failure = error is HttpRequestException http && http.StatusCode.HasValue ? "Graph HTTP " + (int)http.StatusCode.Value : "Graph delivery request failed or timed out.";
+                failure = error is HttpRequestException http && http.StatusCode.HasValue ? "Resend HTTP " + (int)http.StatusCode.Value : "Resend delivery request failed or timed out.";
             }
         }
         await using var update = store.Source.CreateCommand("""

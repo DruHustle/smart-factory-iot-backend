@@ -22,4 +22,5 @@ data:
   internal-telemetry-sink-url: http://smart-factory-dashboard.smart-factory.svc.cluster.local/api/internal/telemetry
   dotnet-log-level: Information
   azure-ad-instance: https://login.microsoftonline.com/
-  graph-api-base-url: https://graph.microsoft.com/v1.0
+  resend-from: Smart Factory <notifications@replace-with-verified-domain.invalid>
+  resend-allowed-recipient-domains: replace-with-company-domain.invalid

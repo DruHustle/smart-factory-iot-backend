@@ -16,7 +16,7 @@ flowchart TB
   Identity --> DashboardDB
   Analytics --> DashboardDB
   Notifications -->|Incident inbox and delivery queue| DashboardDB
-  Notifications --> Graph[Configured Microsoft Graph sender]
+  Notifications --> Resend[Configured Resend email API]
   Pi[Pi gateway] -->|MQTT TLS| Broker[CloudAMQP]
   Broker --> Telemetry
   Device -->|Scoped commands| Broker

@@ -19,16 +19,15 @@ public class DashboardServiceTests
         Assert.False(CoverageAnalytics.Valid(new(Array.Empty<string>(), 0, 1000)));
         Assert.False(CoverageAnalytics.Valid(new(Enumerable.Repeat("a", 201).ToArray(), 0, 1000)));
     }
-    [Fact] public void PartiallyConfiguredGraphFailsClosed() {
-        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?> { ["GRAPH_SENDER_USER"] = "sender@example.com" }).Build();
-        Assert.Throws<InvalidOperationException>(() => new GraphMailSender(new HttpClient(), config));
+    [Fact] public void PartiallyConfiguredResendFailsClosed() {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?> { ["RESEND_FROM"] = "sender@example.com" }).Build();
+        Assert.Throws<InvalidOperationException>(() => new ResendMailSender(new HttpClient(), config));
     }
-    [Fact] public void GraphOnlyAcceptsExplicitRecipientDomains() {
+    [Fact] public void ResendOnlyAcceptsExplicitRecipientDomains() {
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?> {
-            ["GRAPH_TENANT_ID"]="00000000-0000-0000-0000-000000000000", ["GRAPH_CLIENT_ID"]="00000000-0000-0000-0000-000000000001",
-            ["GRAPH_CLIENT_SECRET"]="test", ["GRAPH_SENDER_USER"]="sender@example.com", ["GRAPH_ALLOWED_RECIPIENT_DOMAINS"]="example.com"
+            ["RESEND_API_KEY"]="re_test", ["RESEND_FROM"]="sender@example.com", ["RESEND_ALLOWED_RECIPIENT_DOMAINS"]="example.com"
         }).Build();
-        var sender = new GraphMailSender(new HttpClient(), config);
+        var sender = new ResendMailSender(new HttpClient(), config);
         Assert.True(sender.Allows("engineer@example.com"));
         Assert.False(sender.Allows("engineer@attacker.com"));
         Assert.False(sender.Allows("Display Name <engineer@example.com>"));

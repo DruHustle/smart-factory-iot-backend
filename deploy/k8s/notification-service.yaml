@@ -44,6 +44,21 @@ spec:
               value: Production
             - name: ASPNETCORE_HTTP_PORTS
               value: "8080"
+            - name: RESEND_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: smart-factory-backend-runtime
+                  key: resend-api-key
+            - name: RESEND_FROM
+              valueFrom:
+                configMapKeyRef:
+                  name: smart-factory-device-service
+                  key: resend-from
+            - name: RESEND_ALLOWED_RECIPIENT_DOMAINS
+              valueFrom:
+                configMapKeyRef:
+                  name: smart-factory-device-service
+                  key: resend-allowed-recipient-domains
             - name: AzureAd__Instance
               valueFrom:
                 configMapKeyRef:
