@@ -9,6 +9,7 @@ COPY ["src/Services/DeviceService/DeviceService.csproj", "src/Services/DeviceSer
 COPY ["src/Services/IdentityService/IdentityService.csproj", "src/Services/IdentityService/"]
 COPY ["src/Services/NotificationService/NotificationService.csproj", "src/Services/NotificationService/"]
 COPY ["src/Services/TelemetryService/TelemetryService.csproj", "src/Services/TelemetryService/"]
+COPY ["src/BuildingBlocks/DashboardAccess/DashboardAccess.csproj", "src/BuildingBlocks/DashboardAccess/"]
 COPY ["src/SmartFactory.Tests/SmartFactory.Tests.csproj", "src/SmartFactory.Tests/"]
 
 RUN dotnet restore "src/SmartFactory.sln"
