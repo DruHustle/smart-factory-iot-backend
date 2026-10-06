@@ -95,10 +95,10 @@ Payloads are limited to 16 KiB, topic identity must match deviceId, timestamps m
 
 ## Dashboard-backed private services
 
-IdentityService: `GET /api/auth/profile` returns only id, openId, name, email and current normalized role; `GET /api/auth/check-role/{role}` accepts viewer/operator/engineer/admin. There is no token acquisition endpoint and no returned Graph access token.
+IdentityService: `GET /api/auth/profile` returns only id, openId, name, email and current normalized role; `GET /api/auth/check-role/{role}` accepts viewer/operator/engineer/admin. There is no token acquisition endpoint and no returned provider access token.
 
 AnalyticsService: `POST /api/analytics/coverage` accepts assetIds (1–200 bounded IDs), startTime/endTime epoch milliseconds and a maximum 93-day range. It returns per-asset sample counts, first/last timestamps, longest observed inter-sample gap, and per-metric count/average/min/max. Missing metrics remain null. This is sample coverage, not OEE or inferred factory uptime.
 
-NotificationService: `GET /api/notifications/status` reports Graph configuration and the at-least-once delivery contract. Its background worker claims the shared PostgreSQL incident inbox and sends through `/users/{configured-sender}/sendMail`. It accepts no anonymous/arbitrary email-send request. All incident recipient selection occurs transactionally in the dashboard database.
+NotificationService: `GET /api/notifications/status` reports Resend configuration and the at-least-once delivery contract. Its background worker claims the shared PostgreSQL incident inbox and sends through Resend's server-side email API with a notification-specific idempotency key. It accepts no anonymous/arbitrary email-send request. All incident recipient selection occurs transactionally in the dashboard database.
 
 Every `/api` route above requires both the private `X-Service-Token` and the authenticated `X-User-Id` delegated by Node. Services reload the current account from PostgreSQL. These tokens are never exposed to the browser. Each service exposes `/health/live` and schema-aware `/health/ready`; readiness fails if its database/schema is unavailable. Production binds them only to loopback ports 3104–3106.

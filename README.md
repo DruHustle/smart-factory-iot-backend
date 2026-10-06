@@ -8,9 +8,9 @@ This repository contains five .NET services. Production deploys them **together 
 | TelemetryService | Durable MQTT ingestion, dashboard retry outbox and health | Private health 127.0.0.1:3103 |
 | IdentityService | Existing dashboard account profile and current roles | Private 127.0.0.1:3104 |
 | AnalyticsService | SQL sample coverage, gaps and null-safe observed metric summaries | Private 127.0.0.1:3105 |
-| NotificationService | Durable incident inbox delivery through a configured Graph mailbox | Private 127.0.0.1:3106 |
+| NotificationService | Durable incident inbox delivery through Resend | Private 127.0.0.1:3106 |
 
-Dashboard accounts remain the identity authority. No separate Entra SSO account store is required. Entra client credentials are used only for configured Graph mail and company AAS OAuth integrations. Dashboard roles are reloaded at each private identity/analytics request; anonymous service calls are rejected. Notifications use the shared PostgreSQL inbox/queue and never accept arbitrary email recipients from public requests.
+Dashboard accounts remain the identity authority. No separate Entra SSO account store is required. Resend credentials are used only for notification delivery; Entra client credentials are reserved for company AAS OAuth integrations. Dashboard roles are reloaded at each private identity/analytics request; anonymous service calls are rejected. Notifications use the shared PostgreSQL inbox/queue and never accept arbitrary email recipients from public requests.
 
 Use the canonical [local and Vercel/Render guide](https://github.com/DruHustle/smart-factory-iot/blob/main/RENDER_DEPLOYMENT.md) for both environments, shared tokens, database migrations, image context, provider TLS, single-instance MQTT rollout safety, CI/CD and rollback. Start dashboard Compose/BaSyx first, then this repository's Compose services. Replace every `.env.local.example` placeholder and configure the dashboard DB connection and shared internal service token. Local host ports are Device 5001, Identity 5002, Notifications 5003, Analytics 5004, Telemetry health 5005. All bind to loopback. Company AAS services and managed production databases/broker/Redis remain external to Render.
 
@@ -27,6 +27,6 @@ For live AAS acceptance, use the local BaSyx profile and `AAS_LIVE_TESTS=true do
 
 ## Runtime limits
 
-.NET 8 support ends on 2026-11-11. Migrate SDK/runtime/package dependencies and revalidate before that date; see [Microsoft lifecycle dates](https://learn.microsoft.com/en-us/lifecycle/products/microsoft-net-and-net-core). Telemetry has one stable persistent MQTT identity, so Render must use sequential single-instance deployments. Factory downtime is explicitly confirmed by technicians/admins; missing telemetry does not prove downtime. Graph acceptance does not prove mailbox delivery. No automatic firmware OTA receiver exists in the current edge release.
+.NET 8 support ends on 2026-11-11. Migrate SDK/runtime/package dependencies and revalidate before that date; see [Microsoft lifecycle dates](https://learn.microsoft.com/en-us/lifecycle/products/microsoft-net-and-net-core). Telemetry has one stable persistent MQTT identity, so Render must use sequential single-instance deployments. Factory downtime is explicitly confirmed by technicians/admins; missing telemetry does not prove downtime. Resend acceptance does not prove mailbox delivery. No automatic firmware OTA receiver exists in the current edge release.
 
 [API contracts](API-SPEC.md), [architecture](ARCHITECTURE.md), [troubleshooting](docs/Troubleshooting.md), and [AASX/edge configuration](docs/AASX-and-Edge-Configuration.md) describe supported workflows. Legacy Kubernetes/Cloudflare/ACR artifacts are historical references outside the selected production release.
