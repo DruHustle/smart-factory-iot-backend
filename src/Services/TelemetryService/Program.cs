@@ -102,12 +102,20 @@ public sealed class RenderHealthEndpointService : BackgroundService
             {
                 client = await _listener.AcceptTcpClientAsync(stoppingToken);
             }
-            catch (OperationCanceledException)
+            catch (Exception error) when (IsExpectedListenerShutdown(error, stoppingToken))
             {
                 break;
             }
 
-            await _connections.WaitAsync(stoppingToken);
+            try
+            {
+                await _connections.WaitAsync(stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                client.Dispose();
+                break;
+            }
             _ = HandleHealthRequest(client, stoppingToken);
 
         }
@@ -163,6 +171,10 @@ public sealed class RenderHealthEndpointService : BackgroundService
         _listener?.Stop();
         return base.StopAsync(cancellationToken);
     }
+
+    public static bool IsExpectedListenerShutdown(Exception error, CancellationToken stoppingToken) =>
+        stoppingToken.IsCancellationRequested &&
+        error is OperationCanceledException or SocketException or ObjectDisposedException;
 
     private static int ResolvePort()
     {
