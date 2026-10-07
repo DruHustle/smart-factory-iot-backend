@@ -32,4 +32,21 @@ public class DashboardServiceTests
         Assert.False(sender.Allows("engineer@attacker.com"));
         Assert.False(sender.Allows("Display Name <engineer@example.com>"));
     }
+    [Fact] public void SesRequiresExplicitEnablementSenderAndRecipientPolicy() {
+        var invalid = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?> {
+            ["SES_ENABLED"]="true", ["SES_FROM"]="Smart Factory IoT <smartfactory.notifications@gmail.com>"
+        }).Build();
+        Assert.Throws<InvalidOperationException>(() => new SesMailSender(null!, invalid));
+
+        var restricted = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?> {
+            ["SES_ENABLED"]="true", ["SES_FROM"]="Smart Factory IoT <smartfactory.notifications@gmail.com>",
+            ["SES_ALLOWED_RECIPIENTS"]="verified@example.com", ["SES_ALLOWED_RECIPIENT_DOMAINS"]="factory.example"
+        }).Build();
+        var sender = new SesMailSender(null!, restricted);
+        Assert.True(sender.Configured);
+        Assert.True(sender.Allows("verified@example.com"));
+        Assert.True(sender.Allows("engineer@factory.example"));
+        Assert.False(sender.Allows("other@example.com"));
+        Assert.False(sender.Allows("Display Name <verified@example.com>"));
+    }
 }

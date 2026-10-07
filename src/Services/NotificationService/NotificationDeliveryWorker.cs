@@ -9,13 +9,13 @@ public sealed class NotificationDeliveryWorker(DashboardStore store, IServiceSco
         while (!stoppingToken.IsCancellationRequested) {
             try {
                 using var scope = scopes.CreateScope();
-                var sender = scope.ServiceProvider.GetRequiredService<ResendMailSender>();
+                var sender = scope.ServiceProvider.GetRequiredService<IEmailSender>();
                 if (!await DeliverOne(sender, stoppingToken)) await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
             } catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
             catch { logger.LogWarning("Notification queue unavailable; delivery will retry."); await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken); }
         }
     }
-    public async Task<bool> DeliverOne(ResendMailSender sender, CancellationToken ct)
+    public async Task<bool> DeliverOne(IEmailSender sender, CancellationToken ct)
     {
         // Atomic claim with an expiring lease survives restarts. Other workers skip claimed rows.
         const string claim = """
@@ -23,19 +23,19 @@ public sealed class NotificationDeliveryWorker(DashboardStore store, IServiceSco
         WHERE id=(SELECT id FROM notification_inbox WHERE
           ("emailStatus" IN ('pending','retrying','processing') OR ($1 AND "emailStatus"='unconfigured'))
           AND "nextAttemptAt"<=now() ORDER BY id FOR UPDATE SKIP LOCKED LIMIT 1)
-        RETURNING id, "userId", title, body, attempts
+        RETURNING id, "userId", kind, title, body, attempts
         """;
         await using var command = store.Source.CreateCommand(claim);
         command.Parameters.AddWithValue(sender.Configured);
-        long id; int userId; string title; string body; int attempts;
+        long id; int userId; string kind; string title; string body; int attempts;
         await using (var reader = await command.ExecuteReaderAsync(ct)) {
             if (!await reader.ReadAsync(ct)) return false;
-            id = reader.GetInt64(0); userId = reader.GetInt32(1); title = reader.GetString(2); body = reader.GetString(3); attempts = reader.GetInt32(4);
+            id = reader.GetInt64(0); userId = reader.GetInt32(1); kind = reader.GetString(2); title = reader.GetString(3); body = reader.GetString(4); attempts = reader.GetInt32(5);
         }
         var user = await store.GetUser(userId, ct);
         var state = "accepted"; string? failure = null;
         if (!sender.Configured) state = "unconfigured";
-        else if (user is null || !new[] { "engineer", "admin" }.Contains(user.Role) || !sender.Allows(user.Email)) {
+        else if (user is null || (kind != "account_welcome" && !new[] { "engineer", "admin" }.Contains(user.Role)) || !sender.Allows(user.Email)) {
             state = "no_recipient"; failure = "Current account role or recipient domain is not authorized for email.";
         } else {
             try {
@@ -46,7 +46,9 @@ public sealed class NotificationDeliveryWorker(DashboardStore store, IServiceSco
             catch (Exception error) {
                 state = attempts >= 8 ? "failed" : "retrying";
                 // Never persist SDK exception bodies, recipient addresses, credentials or tokens.
-                failure = error is HttpRequestException http && http.StatusCode.HasValue ? "Resend HTTP " + (int)http.StatusCode.Value : "Resend delivery request failed or timed out.";
+                failure = error is HttpRequestException http && http.StatusCode.HasValue
+                    ? sender.Provider + " HTTP " + (int)http.StatusCode.Value
+                    : sender.Provider + " delivery request failed or timed out.";
             }
         }
         await using var update = store.Source.CreateCommand("""

@@ -5,7 +5,7 @@ using System.Net.Mail;
 
 namespace SmartFactory.Services.NotificationService;
 
-public sealed class ResendMailSender
+public sealed class ResendMailSender : IEmailSender
 {
     private readonly HttpClient client;
     private readonly string apiKey;
@@ -13,6 +13,7 @@ public sealed class ResendMailSender
     private readonly HashSet<string> domains;
 
     public bool Configured => apiKey.Length > 0;
+    public string Provider => "Resend";
 
     public ResendMailSender(HttpClient client, IConfiguration configuration)
     {
