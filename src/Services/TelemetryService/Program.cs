@@ -86,7 +86,12 @@ public sealed class RenderHealthEndpointService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var port = ResolvePort();
-        _listener = new TcpListener(Environment.GetEnvironmentVariable("BACKEND_DEPLOYMENT_MODE") == "render-bundle" ? IPAddress.Loopback : IPAddress.Any, port);
+        // In the split Render topology TelemetryService is the worker's public
+        // health endpoint. In the legacy/all-in-one bundle it remains private
+        // behind the Node API readiness aggregator.
+        _listener = new TcpListener(ResolveBindAddress(
+            Environment.GetEnvironmentVariable("RENDER_SERVICE_ROLE"),
+            Environment.GetEnvironmentVariable("BACKEND_DEPLOYMENT_MODE")), port);
         _listener.Start();
         _logger.LogInformation("Health endpoint listening on port {Port}.", port);
 
@@ -181,6 +186,11 @@ public sealed class RenderHealthEndpointService : BackgroundService
 
         return 10000;
     }
+
+    public static IPAddress ResolveBindAddress(string? renderRole, string? deploymentMode) =>
+        string.Equals(renderRole, "worker", StringComparison.OrdinalIgnoreCase)
+            ? IPAddress.Any
+            : deploymentMode == "render-bundle" ? IPAddress.Loopback : IPAddress.Any;
 }
 
 
