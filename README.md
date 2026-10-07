@@ -1,5 +1,7 @@
 # Smart Factory IoT Backend
 
+Production AAS runs on the Oracle VM defined by `deploy/terraform/oracle-basyx`, using the `deploy/oracle-basyx` Compose stack and the dedicated Aiven `basyx` database. The dashboard repository's deployment guide remains canonical for the cross-repository release.
+
 This repository contains five .NET services. Production deploys them **together with the Node API in one Render container**; the React UI is a separate prebuilt Vercel artifact, not a Docker image. The dashboard repository owns the combined Dockerfile and the sole coordinated CI/CD release workflow, triggered by a protected dashboard `main` push. Kubernetes is unnecessary.
 
 | Service | Responsibility | Production route |

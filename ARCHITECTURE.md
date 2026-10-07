@@ -1,5 +1,7 @@
 # Backend architecture
 
+Production AAS runs separately from Render on an Oracle Cloud VM: Caddy fronts six BaSyx Go services, and those services persist to the dedicated Aiven `basyx` PostgreSQL database. Database/OAuth secrets remain on the VM and outside Terraform state.
+
 The dashboard Node API and five .NET services share one non-root, supervised Render container. The static React UI is on Vercel. Only the Node API is public; internal service traffic uses loopback and scoped service tokens. Databases, Redis, CloudAMQP and the company AAS runtime remain managed external systems. Physical gateways and firmware remain on the OT network.
 
 ```mermaid
@@ -22,7 +24,8 @@ flowchart TB
   Device -->|Scoped commands| Broker
   Telemetry --> TelemetryDB[(Telemetry PostgreSQL)]
   Device --> DeviceDB[(Device PostgreSQL)]
-  Device --> AAS[Company AAS repositories and registries]
+  Device --> AAS[Oracle VM: Caddy and six BaSyx services]
+  AAS --> BaSyxDB[(Aiven basyx PostgreSQL)]
 ```
 
 Telemetry validates bounded payloads, persists before MQTT acknowledgment, preserves named asset signals and missing values, and retries authenticated dashboard delivery from its PostgreSQL outbox. Stable ingestion IDs and database locks prevent retries from inflating dashboard readings or incidents. Analytics reads the dashboard database directly, so no duplicate AMQP telemetry event is published. Pi command IDs are reserved durably before opening the USB serial port to prevent repeated motion after ambiguous failures. This is an operational control path; it does not replace safety-rated machine interlocks.

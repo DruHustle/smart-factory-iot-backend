@@ -1,0 +1,38 @@
+basyx.152-70-22-84.sslip.io {
+  encode zstd gzip
+
+  route {
+    handle /oauth/token {
+      reverse_proxy token-service:9000
+    }
+
+    @unauthorized not header Authorization "Bearer {$BASYX_GATEWAY_TOKEN}"
+    respond @unauthorized "Unauthorized" 401
+
+    handle_path /aas/* {
+      reverse_proxy aas-repository:8081
+    }
+
+    handle_path /aas-registry/* {
+      reverse_proxy aas-registry:8082
+    }
+
+    handle_path /submodels/* {
+      reverse_proxy submodel-repository:8083
+    }
+
+    handle_path /submodel-registry/* {
+      reverse_proxy submodel-registry:8084
+    }
+
+    handle_path /concept-descriptions/* {
+      reverse_proxy concept-description-repository:8085
+    }
+
+    handle_path /aasx/* {
+      reverse_proxy aasx-file-server:8086
+    }
+
+    respond "Not found" 404
+  }
+}

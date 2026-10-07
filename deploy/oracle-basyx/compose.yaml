@@ -1,0 +1,123 @@
+name: smart-factory-basyx
+
+x-basyx-database: &basyx-database
+  POSTGRES_HOST: ${POSTGRES_HOST}
+  POSTGRES_PORT: ${POSTGRES_PORT:-10386}
+  POSTGRES_USER: ${POSTGRES_USER:-basyx_service}
+  POSTGRES_PASSWORD: ${BASYX_PASSWORD:?BASYX_PASSWORD is required}
+  POSTGRES_DBNAME: ${POSTGRES_DBNAME:-basyx}
+  POSTGRES_SSLMODE: require
+  POSTGRES_MAXOPENCONNECTIONS: 3
+  POSTGRES_MAXIDLECONNECTIONS: 1
+
+services:
+  configuration:
+    image: eclipsebasyx/basyxconfigurationservice-go:1.1.0
+    restart: "no"
+    environment: *basyx-database
+
+  aas-repository:
+    image: eclipsebasyx/aasrepository-go:1.1.0
+    restart: unless-stopped
+    environment:
+      <<: *basyx-database
+      SERVER_PORT: 8081
+      ABAC_ENABLED: "false"
+      GENERAL_AASREGISTRYINTEGRATION: "true"
+      GENERAL_EXTERNALURL: https://basyx.152-70-22-84.sslip.io/aas
+    ports: ["127.0.0.1:8081:8081"]
+    depends_on:
+      configuration: { condition: service_completed_successfully }
+
+  aas-registry:
+    image: eclipsebasyx/aasregistry-go:1.1.0
+    restart: unless-stopped
+    environment:
+      <<: *basyx-database
+      SERVER_PORT: 8082
+      ABAC_ENABLED: "false"
+    ports: ["127.0.0.1:8082:8082"]
+    depends_on:
+      configuration: { condition: service_completed_successfully }
+
+  submodel-repository:
+    image: eclipsebasyx/submodelrepository-go:1.1.0
+    restart: unless-stopped
+    environment:
+      <<: *basyx-database
+      SERVER_PORT: 8083
+      ABAC_ENABLED: "false"
+      GENERAL_SUBMODELREGISTRYINTEGRATION: "true"
+      GENERAL_EXTERNALURL: https://basyx.152-70-22-84.sslip.io/submodels
+    ports: ["127.0.0.1:8083:8083"]
+    depends_on:
+      configuration: { condition: service_completed_successfully }
+
+  submodel-registry:
+    image: eclipsebasyx/submodelregistry-go:1.1.0
+    restart: unless-stopped
+    environment:
+      <<: *basyx-database
+      SERVER_PORT: 8084
+      ABAC_ENABLED: "false"
+    ports: ["127.0.0.1:8084:8084"]
+    depends_on:
+      configuration: { condition: service_completed_successfully }
+
+  concept-description-repository:
+    image: eclipsebasyx/conceptdescriptionrepository-go:1.1.0
+    restart: unless-stopped
+    environment:
+      <<: *basyx-database
+      SERVER_PORT: 8085
+      ABAC_ENABLED: "false"
+    ports: ["127.0.0.1:8085:8085"]
+    depends_on:
+      configuration: { condition: service_completed_successfully }
+
+  aasx-file-server:
+    image: eclipsebasyx/aasxfileserver-go:1.1.0
+    restart: unless-stopped
+    environment:
+      <<: *basyx-database
+      SERVER_PORT: 8086
+      ABAC_ENABLED: "false"
+    ports: ["127.0.0.1:8086:8086"]
+    depends_on:
+      configuration: { condition: service_completed_successfully }
+
+  token-service:
+    image: python:3.13-alpine
+    restart: unless-stopped
+    command: ["python", "/app/token-service.py"]
+    environment:
+      OAUTH_CLIENT_ID: ${OAUTH_CLIENT_ID:?OAUTH_CLIENT_ID is required}
+      OAUTH_CLIENT_SECRET: ${OAUTH_CLIENT_SECRET:?OAUTH_CLIENT_SECRET is required}
+      BASYX_GATEWAY_TOKEN: ${BASYX_GATEWAY_TOKEN:?BASYX_GATEWAY_TOKEN is required}
+    volumes:
+      - ./token-service.py:/app/token-service.py:ro
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    environment:
+      BASYX_GATEWAY_TOKEN: ${BASYX_GATEWAY_TOKEN:?BASYX_GATEWAY_TOKEN is required}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - token-service
+      - aas-repository
+      - aas-registry
+      - submodel-repository
+      - submodel-registry
+      - concept-description-repository
+      - aasx-file-server
+
+volumes:
+  caddy_data:
+  caddy_config:

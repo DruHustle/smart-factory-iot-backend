@@ -89,6 +89,15 @@ appsettings.Local.json
 # User secrets
 secrets.json
 
+# Terraform local state and credentials
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfplan
+crash.log
+crash.*.log
+
 # Ignore all .obj files
 *.obj
 
