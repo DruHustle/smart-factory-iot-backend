@@ -6,7 +6,12 @@ const source = await readFile(sourcePath, "utf8");
 const values = new Map();
 for (const line of source.split(/\r?\n/)) {
   const match = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
-  if (match) values.set(match[1], match[2]);
+  if (match) {
+    if (match[2].startsWith(`${match[1]}=`)) {
+      throw new Error(`${match[1]} contains a duplicated variable assignment`);
+    }
+    values.set(match[1], match[2]);
+  }
 }
 const defaults = new Map([
   ["EMAIL_PROVIDER", "ses"],
