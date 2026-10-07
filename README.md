@@ -2,7 +2,7 @@
 
 Production AAS runs on the Oracle VM defined by `deploy/terraform/oracle-basyx`, using the `deploy/oracle-basyx` Compose stack and the dedicated Aiven `basyx` database. The dashboard repository's deployment guide remains canonical for the cross-repository release.
 
-This repository contains five .NET services. Production deploys them **together with the Node API in one Render container**; the React UI is a separate prebuilt Vercel artifact, not a Docker image. The dashboard repository owns the combined Dockerfile and the sole coordinated CI/CD release workflow, triggered by a protected dashboard `main` push. Kubernetes is unnecessary.
+This repository contains five .NET services. Production packages them with the Node API in one image deployed to separate Render roles: a scalable API/web service and a singleton telemetry/notification worker. The React UI is a separate prebuilt Vercel artifact, not a Docker image. The dashboard repository owns the combined Dockerfile and the sole coordinated CI/CD release workflow, triggered by a protected dashboard `main` push. Kubernetes is unnecessary.
 
 | Service | Responsibility | Production route |
 |---|---|---|
@@ -14,7 +14,7 @@ This repository contains five .NET services. Production deploys them **together 
 
 Dashboard accounts remain the identity authority. No separate Entra SSO account store is required. SES/Resend credentials are used only for notification delivery; Entra client credentials are reserved for company AAS OAuth integrations. Dashboard roles are reloaded at each private identity/analytics request; anonymous service calls are rejected. Notifications use the shared PostgreSQL inbox/queue and never accept arbitrary email recipients from public requests.
 
-Use the canonical [local and Vercel/Render guide](https://github.com/DruHustle/smart-factory-iot/blob/main/RENDER_DEPLOYMENT.md) for both environments, shared tokens, database migrations, image context, provider TLS, single-instance MQTT rollout safety, CI/CD and rollback. Start dashboard Compose/BaSyx first, then this repository's Compose services. Replace every `.env.local.example` placeholder and configure the dashboard DB connection and shared internal service token. Local host ports are Device 5001, Identity 5002, Notifications 5003, Analytics 5004, Telemetry health 5005. All bind to loopback. Company AAS services and managed production databases/broker/Redis remain external to Render.
+Use the canonical [local and Vercel/Render guide](https://github.com/DruHustle/smart-factory-iot/blob/main/RENDER_DEPLOYMENT.md) for both environments, shared tokens, database migrations, image context, provider TLS, single-instance MQTT rollout safety, CI/CD and rollback. Run `node scripts/split-render-env.mjs .env.prod` to generate ignored, permission-restricted `.env.prod.api` and `.env.prod.worker` upload files; compare them with the committed examples and fill any reported blanks before importing them into the matching Render service. Start dashboard Compose/BaSyx first, then this repository's Compose services. Replace every `.env.local.example` placeholder and configure the dashboard DB connection and shared internal service token. Local host ports are Device 5001, Identity 5002, Notifications 5003, Analytics 5004, Telemetry health 5005. All bind to loopback. Company AAS services and managed production databases/broker/Redis remain external to Render.
 
 ## Tests
 

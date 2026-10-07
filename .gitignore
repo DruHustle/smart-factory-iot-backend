@@ -80,6 +80,8 @@ Thumbs.db
 .env.*
 !.env.local.example
 !.env.prod.example
+!.env.prod.api.example
+!.env.prod.worker.example
 appsettings.Development.json
 appsettings.Local.json
 
