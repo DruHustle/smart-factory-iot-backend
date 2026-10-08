@@ -5,6 +5,27 @@ using SmartFactory.Services.NotificationService;
 namespace SmartFactory.Tests;
 public class DashboardServiceTests
 {
+    [Fact]
+    public void GmailSmtpRequiresAnExplicitRecipientPolicy()
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?> {
+            ["SMTP_USERNAME"]="smartfactory.notifications@gmail.com", ["SMTP_PASSWORD"]="app-password",
+            ["SMTP_FROM"]="Smart Factory IoT <smartfactory.notifications@gmail.com>"
+        }).Build();
+        Assert.Throws<InvalidOperationException>(() => new SmtpMailSender(config));
+    }
+
+    [Fact]
+    public void GmailSmtpAllowsSignupRecipientsWhenExplicitlyEnabled()
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?> {
+            ["SMTP_USERNAME"]="smartfactory.notifications@gmail.com", ["SMTP_PASSWORD"]="app-password",
+            ["SMTP_FROM"]="Smart Factory IoT <smartfactory.notifications@gmail.com>", ["SMTP_ALLOW_ALL_RECIPIENTS"]="true"
+        }).Build();
+        var sender = new SmtpMailSender(config);
+        Assert.True(sender.Configured);
+        Assert.True(sender.Allows("new.user@example.com"));
+    }
     [Fact] public void InternalTokenRejectsMissingAndWrongCredentials() {
         var token = new string('x', 32);
         Assert.True(DashboardRuntime.ValidToken(token, token));

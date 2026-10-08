@@ -15,7 +15,9 @@ if (emailProvider == "ses") {
     builder.Services.AddSingleton<IEmailSender, SesMailSender>();
 } else if (emailProvider == "resend") {
     builder.Services.AddSingleton<IEmailSender>(services => new ResendMailSender(services.GetRequiredService<IHttpClientFactory>().CreateClient("resend"), builder.Configuration));
-} else throw new InvalidOperationException("EMAIL_PROVIDER must be 'ses' or 'resend'.");
+} else if (emailProvider == "smtp") {
+    builder.Services.AddSingleton<IEmailSender>(new SmtpMailSender(builder.Configuration));
+} else throw new InvalidOperationException("EMAIL_PROVIDER must be 'smtp', 'ses' or 'resend'.");
 builder.Services.AddHostedService<NotificationDeliveryWorker>();
 var app = builder.Build();
 app.UseDashboardAccess("SELECT id FROM notification_inbox LIMIT 1");
