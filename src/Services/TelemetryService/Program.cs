@@ -17,8 +17,22 @@ if (args.Contains("--migrate", StringComparer.Ordinal))
         ?? throw new InvalidOperationException("PostgresConnectionString is required.");
     var production = string.Equals(Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
         ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Production", StringComparison.OrdinalIgnoreCase);
-    await using var database = new NpgsqlConnection(PostgresSecurity.ValidatePostgresTls(rawConnection, production));
-    await database.OpenAsync();
+    var migrationConnection = new NpgsqlConnectionStringBuilder(PostgresSecurity.ValidatePostgresTls(rawConnection, production))
+    {
+        Pooling = false,
+        Timeout = 10,
+    };
+    await using var database = new NpgsqlConnection(migrationConnection.ConnectionString);
+    for (var attempt = 0; ; attempt++)
+    {
+        try { await database.OpenAsync(); break; }
+        catch (PostgresException error) when (error.SqlState == PostgresErrorCodes.TooManyConnections && attempt < 8)
+        {
+            var delay = TimeSpan.FromSeconds(Math.Min(30, 2 << attempt));
+            Console.WriteLine($"PostgreSQL connection limit reached; retrying telemetry migration in {delay.TotalSeconds:0}s.");
+            await Task.Delay(delay);
+        }
+    }
     await using var transaction = await database.BeginTransactionAsync();
     await using (var migrationLock = new NpgsqlCommand("SELECT pg_advisory_xact_lock(20261005)", database, transaction))
         await migrationLock.ExecuteNonQueryAsync();
@@ -45,6 +59,8 @@ var host = Host.CreateDefaultBuilder(args)
         {
             connectionString = PostgresSecurity.ValidatePostgresTls(connectionString,
                 string.Equals(Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Production", StringComparison.OrdinalIgnoreCase));
+            var pooledConnection = new NpgsqlConnectionStringBuilder(connectionString) { MaxPoolSize = 2, MinPoolSize = 0 };
+            connectionString = pooledConnection.ConnectionString;
             services.AddDbContext<TelemetryDbContext>(options =>
                 options.UseNpgsql(connectionString));
         }
