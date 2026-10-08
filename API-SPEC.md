@@ -30,7 +30,7 @@ DeviceService also exposes private dashboard-to-service endpoints under `/api/as
 | DELETE | `/api/assets/import` | Compensate a failed cross-service AASX database commit using the receipt returned by the importer. |
 | POST | `/api/assets/sync` | Validate and publish a gateway's complete desired-state profile. |
 | POST | `/api/assets/control` | Publish one short-lived, non-retained ADA031 command for an engineer/admin. |
-| POST | `/api/assets/gpio-control` | Publish one bounded, short-lived WROVER indicator pulse for an engineer/admin. |
+| POST | `/api/assets/gpio-control` | Publish one bounded, short-lived WROVER indicator pulse for an operator, engineer, or admin. |
 
 Set `AAS_REPOSITORY_URL` for shells, `AAS_SUBMODEL_REPOSITORY_URL` for submodels, `AAS_CONCEPT_DESCRIPTION_REPOSITORY_URL` for Concept Descriptions, `AAS_REGISTRY_URL` and `AAS_SUBMODEL_REGISTRY_URL` for descriptors, and `AASX_FILE_SERVER_URL` for packages. DeviceService obtains OAuth tokens from `AAS_OIDC_TOKEN_URL` using its client id and secret. Redis Pub/Sub is required for production cross-replica AAS change notifications. Set `AAS_REPOSITORY_REGISTRY_INTEGRATION=true` when the repository owns automatic descriptor registration. `PUT` checks the repository revision before writing and returns HTTP 409 when the expected revision is stale; the dashboard keeps the immutable revision snapshots in PostgreSQL.
 

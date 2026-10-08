@@ -145,7 +145,7 @@ public sealed class AssetsController(AasProvisioningService provisioner, EdgeCon
         }
     }
 
-    [HttpPost("gpio-control"), Authorize(Roles = "engineer,admin")]
+    [HttpPost("gpio-control"), Authorize(Roles = "operator,engineer,admin")]
     public async Task<IActionResult> ControlWroverIndicator([FromBody] GpioControlRequest request, CancellationToken ct)
     {
         try

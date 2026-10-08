@@ -126,6 +126,30 @@ namespace SmartFactory.Tests
         }
 
         [Fact]
+        public async Task WroverIndicatorRouteAllowsOperatorRoleToReachPublisher()
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/assets/gpio-control")
+            {
+                Content = JsonContent.Create(new
+                {
+                    schemaVersion = 1,
+                    gatewayDeviceId = "pi-edge-01",
+                    targetDeviceId = "esp32-wrover-01",
+                    pin = 18,
+                    value = 1,
+                    holdMs = 2000,
+                    commandId = "indicator-operator-0001",
+                    expiresAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 5000,
+                }),
+            };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", CreateToken("operator"));
+
+            var response = await _client.SendAsync(request);
+
+            Assert.NotEqual(HttpStatusCode.Forbidden, response.StatusCode);
+        }
+
+        [Fact]
         public async Task FirmwareUpdateRoutesFailClosedWithoutClaimingDelivery()
         {
             using var viewerRequest = new HttpRequestMessage(HttpMethod.Post, "/api/devices/1/trigger-update")
