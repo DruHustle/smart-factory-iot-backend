@@ -18,6 +18,6 @@
 | MQTT connects but no reading is stored | Check the topic, valid JSON, `deviceId`, UTC epoch-millisecond timestamp, DB, and consumer logs. |
 | Dashboard has no forwarded readings | Configure both bridge URL and distinct `INGESTION_API_TOKEN`; check HTTPS, network route, exact token, and API logs. |
 
-For login/AAS issues see the dashboard repository's [login troubleshooting](https://github.com/DruHustle/smart-factory-iot/blob/main/LOGIN_TROUBLESHOOTING.md).
+For login/AAS issues see the dashboard repository's [login troubleshooting](https://github.com/DruHustle/smart-factory-iot-frontend/blob/main/LOGIN_TROUBLESHOOTING.md).
 
-For Render readiness 503, inspect the six Supervisor process statuses and their private health routes, then check database migrations and verified PostgreSQL/Redis/MQTT connectivity. Keep secrets out of logs. See the canonical [Vercel/Render guide](https://github.com/DruHustle/smart-factory-iot/blob/main/RENDER_DEPLOYMENT.md).
+For Render readiness 503, inspect the six Supervisor process statuses and their private health routes, then check database migrations and verified PostgreSQL/Redis/MQTT connectivity. Keep secrets out of logs. See the canonical [Vercel/Render guide](https://github.com/DruHustle/smart-factory-iot-frontend/blob/main/RENDER_DEPLOYMENT.md).
